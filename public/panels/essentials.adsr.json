@@ -1,0 +1,7 @@
+{
+  "panes": ["envelope"],
+  "sections": [
+    { "label": "01 / STAGES", "hero": true, "columns": 4, "params": ["attack", "decay", "sustain", "release"] }
+  ],
+  "short": { "attack": "ATTACK", "decay": "DECAY", "sustain": "SUSTAIN", "release": "RELEASE" }
+}

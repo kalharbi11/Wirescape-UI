@@ -1,0 +1,33 @@
+import { defineConfig, devices } from '@playwright/test';
+
+/**
+ * The container ships a Chromium that does not match this Playwright's
+ * pinned build, so every project points at it explicitly.
+ */
+const executablePath = process.env.WIRESCAPE_CHROMIUM ?? '/opt/pw-browsers/chromium';
+
+export default defineConfig({
+  testDir: './tests',
+  timeout: 60_000,
+  expect: { timeout: 10_000 },
+  fullyParallel: false,
+  workers: 1,
+  reporter: [['list']],
+  use: {
+    baseURL: 'http://localhost:4173',
+    trace: 'retain-on-failure',
+    launchOptions: { executablePath, args: ['--no-sandbox'] },
+  },
+  projects: [
+    {
+      name: 'desktop',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1920, height: 1080 } },
+    },
+  ],
+  webServer: {
+    command: 'npm run build && npm run preview',
+    url: 'http://localhost:4173',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+  },
+});
