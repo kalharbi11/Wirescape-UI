@@ -1,0 +1,6 @@
+{
+  "sections": [
+    { "label": "01 / VOICING", "hero": true, "params": ["voices", "octave"] },
+    { "label": "02 / ALLOCATION", "params": ["mode"], "columns": 1 }
+  ]
+}

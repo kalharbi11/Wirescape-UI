@@ -1,0 +1,7 @@
+{
+  "sections": [
+    { "label": "01 / TEMPO", "hero": true, "params": ["bpm", "ticks_per_beat", "duty"] },
+    { "label": "02 / TRANSPORT", "params": ["run"], "columns": 1 }
+  ],
+  "short": { "ticks_per_beat": "TICKS/BEAT" }
+}

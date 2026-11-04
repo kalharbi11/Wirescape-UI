@@ -1,0 +1,1 @@
+{ "sections": [{ "label": "01 / LEVELS", "hero": true, "params": ["level_a", "level_b"] }], "short": { "level_a": "A", "level_b": "B" } }

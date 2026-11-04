@@ -1,0 +1,4 @@
+{
+  "panes": ["envelope"],
+  "sections": [{ "label": "01 / SHAPE", "hero": true, "params": ["rise", "fall", "curve"] }]
+}

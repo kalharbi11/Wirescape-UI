@@ -1,0 +1,7 @@
+{
+  "panes": ["wave"],
+  "sections": [
+    { "label": "01 / MOTION", "hero": true, "params": ["rate", "depth", "offset"] },
+    { "label": "02 / SYNC", "params": ["sync", "beats"], "columns": 2 }
+  ]
+}

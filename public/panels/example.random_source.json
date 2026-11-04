@@ -1,0 +1,4 @@
+{
+  "panes": ["wave"],
+  "sections": [{ "label": "01 / RANDOM", "hero": true, "params": ["voices", "smooth", "range"] }]
+}
