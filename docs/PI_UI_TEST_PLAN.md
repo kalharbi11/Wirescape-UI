@@ -1,5 +1,7 @@
 # Pi UI test plan: phases 3.5–6
 
+**Before Pi execution:** read the [phases 3.5–6 pre-Pi readiness review](PRE_PI_READINESS_REVIEW.md) for required merge/runner gates, measurement revisions, and owner UX acceptance notes. It is a review checklist, not a recorded Pi pass.
+
 Prepared while the owner is commuting; no Pi access or test execution requested now.
 Hardware confirmed by owner: Pi 5B rev1.0, BCM2712, 8GB, MicroSD; externally powered
 14-inch 16:9 monitor described as 2K. Measure negotiated resolution and scaling;
