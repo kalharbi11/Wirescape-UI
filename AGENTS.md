@@ -15,7 +15,7 @@ Wirescape is a browser-based modular synth UI that targets a Raspberry Pi (Chrom
 
 | path | what |
 |---|---|
-| `ui/wirescape-ui-kit.html` | self-contained reference page (no libraries, ~110 kB): tokens, control library, states + info boxes, displays, 9 stock module cards, motion, cables, archive index |
+| `ui/wirescape-ui-kit.html` | self-contained reference page (published at https://claude.ai/artifact/CV9V15CkywzgEpt2Q1hhb9) (no libraries, ~110 kB): tokens, control library, states + info boxes, displays, 9 stock module cards, motion, cables, archive index |
 | `ui/tokens.css` | design tokens as CSS variables |
 | `docs/*.md` | spec, performance, decisions, archive, references |
 | `archive/sketches/control-jam-r1.html` | round 1 exploration (~60 ideas, incl. archived ones), published at https://claude.ai/artifact/G6WHy9jfYvcedE6b8E2P6d |
