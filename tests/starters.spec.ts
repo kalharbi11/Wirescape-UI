@@ -53,6 +53,17 @@ for (const starter of qt) {
       expect(saved[field]).toEqual(source[field]);
     }
     await expect(page.locator('[data-testid^="module-header-"]')).toHaveCount(source.modules.length);
+    const intersections = await page.locator('.module').evaluateAll(modules => {
+      const bounds = modules.map(module => ({
+        id: (module as HTMLElement).dataset.id,
+        box: module.getBoundingClientRect(),
+      }));
+      return bounds.flatMap((a, i) => bounds.slice(i + 1)
+        .filter(b => a.box.left < b.box.right && a.box.right > b.box.left
+          && a.box.top < b.box.bottom && a.box.bottom > b.box.top)
+        .map(b => `${a.id} overlaps ${b.id}`));
+    });
+    expect(intersections, `${starter.id} card spacing`).toEqual([]);
     expect(errors).toEqual([]);
   });
 }

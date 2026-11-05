@@ -2,7 +2,7 @@ name: UI checks
 on:
   pull_request:
   push:
-    branches: [main, 'phase/**']
+    branches: [main]
 permissions:
   contents: read
 jobs:
@@ -21,7 +21,7 @@ jobs:
       - name: Browser regression suite
         run: |
           export WIRESCAPE_CHROMIUM="$(node --input-type=module -e 'import { chromium } from "@playwright/test"; console.log(chromium.executablePath())')"
-          npm test
+          npm test -- --max-failures=5
       - uses: actions/upload-artifact@v4
         if: always()
         with:

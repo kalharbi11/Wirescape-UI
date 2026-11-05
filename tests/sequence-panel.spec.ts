@@ -13,7 +13,7 @@ async function sequence(page: import('@playwright/test').Page, length = 8) {
 
 test('sequence pitch and velocity support typed values and keyboard edits, with undo and round-trip', async ({ page }) => {
   await sequence(page);
-  for (const [id, value] of [['pitch1', '0.5'], ['vel1', '0.65']]) {
+  for (const [id, value] of [['pitch1', '0.5'], ['vel1', '65%']]) {
     await page.getByTestId(`readout-1-${id}`).click();
     await page.getByTestId(`readout-input-1-${id}`).fill(value!);
     await page.getByTestId(`readout-input-1-${id}`).press('Enter');
