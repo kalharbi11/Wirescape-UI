@@ -1,13 +1,13 @@
 # Pi UI validation
 
 Runner: `pi-ui`. Required labels: `self-hosted`, `Linux`, `ARM64`, `pi`, `ui`, `pi5`.
-The `pi-ui` job in UI checks runs the browser suite with system Chromium **headed**,
+The `pi-ui` job in Pi UI checks runs the browser suite with system Chromium **headed**,
 then records the 20-module/40-cable fixture at fit and 100% in Normal and Pi profiles.
 No audio engine, real MIDI/OSC, SSH, sudo or system-package installation is involved.
 
 The owner-approved `phase/6-signature-polish` PR bootstraps the first run. Fork PRs and
 other PR branches do not target the physical runner. Once the workflow is on the
-repository default branch, use Actions → UI checks → Run workflow on a trusted ref.
+repository default branch, use Actions → Pi UI checks → Run workflow as the repository owner on `main`. Other actors/refs are skipped.
 The job uses read-only repository permissions and does not persist checkout credentials.
 
 ## Desktop prerequisites
@@ -41,3 +41,6 @@ The job checks the ≥30FPS UI target in both profiles/views. Hosted cloud resul
 remain separate. Inspect renderer/display details and the exact revision before
 recording results in PERFORMANCE.md and closing OPEN-5. This does not validate
 real audio contention or latency; those belong to phase7 in `wirescape`.
+
+Hosted UI checks run independently, so an unavailable physical runner cannot block
+the normal hosted regression job. Physical Pi runs serialize across revisions.
