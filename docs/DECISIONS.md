@@ -132,3 +132,7 @@ Owner authorization: assume phase 3.5 approved, preserve its design language, fi
 | system audit | optional audio capabilities hidden; no-device safe; device rates refreshed; OSC unsubscribed on close; reduced-motion default matches OS |
 | automation | GitHub Actions installs locked dependencies, typechecks/builds and runs Chromium regression suite; failure traces retained |
 | hardware | OPEN-5 stays open until actual Pi measurements; CHAOS-lite, dark theme and phase 7 remain deferred |
+
+## Revision before phase 7
+
+Fix reproduced history gesture boundaries, stuck keyboard note releases after octave changes, modal focus/background shortcuts, sparse effective-value retention and fader live-marker reset. Preserve the approved design and synchronous prototype engine contract. The real engine adapter must supply native graph metadata/output buses and define asynchronous rejection handling; these are integration work, not visual redesign. Keep actual Pi display benchmarking separate from hosted headless evidence.

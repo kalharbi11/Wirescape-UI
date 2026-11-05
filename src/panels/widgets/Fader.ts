@@ -26,6 +26,8 @@ export class Fader {
   private readonly valueEl: HTMLElement;
   private readonly h: number;
   private unbind: () => void = () => {};
+  private live: number | undefined;
+  private liveBase = NaN;
 
   constructor(private readonly o: FaderOptions) {
     const p = o.param;
@@ -74,13 +76,9 @@ export class Fader {
 
     this.refresh();
     if (o.ticker) {
-      let last = NaN;
       this.unbind = o.ticker.bind(o.moduleId, t => {
         const v = t.effective[o.moduleId]?.[p.id];
-        if (v === undefined || v === last) return;
-        last = v;
-        this.root.classList.add('modded');
-        this.paintLive(v);
+        if (v !== undefined) this.paintLive(v);
       });
     }
   }
@@ -100,10 +98,17 @@ export class Fader {
     this.valueEl.dataset.testid = `readout-${this.o.moduleId}-${p.id}`;
     this.thumb.setAttribute('aria-valuenow', String(v));
     this.thumb.setAttribute('aria-valuetext', text);
-    if (!this.root.classList.contains('modded')) this.paintLive(v);
+    this.paintLive(this.root.classList.contains('modded') ? this.live ?? v : v);
   }
 
   private paintLive(v: number): void {
+    const base = this.o.getValue();
+    if (v === this.live && base === this.liveBase) return;
+    this.live = v;
+    this.liveBase = base;
+    // The engine also reports unmodulated parameters. Rust is reserved for
+    // an effective value that actually differs from the thumb's set value.
+    this.root.classList.toggle('modded', Math.abs(v - base) > 1e-9);
     this.ghost.style.transform = `translateY(${(1 - valueToNorm(this.o.param, v)) * this.h}px)`;
   }
 

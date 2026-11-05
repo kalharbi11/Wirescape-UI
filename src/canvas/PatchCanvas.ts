@@ -92,7 +92,7 @@ export class PatchCanvas {
   // ---- building ---------------------------------------------------------
 
   rebuild(): void {
-    for (const c of this.cards.values()) { this.s.ticker.dropModule(c.root.dataset.id ? Number(c.root.dataset.id) : -1); c.destroy(); }
+    for (const c of this.cards.values()) { this.s.ticker.dropModule(c.root.dataset.id ? Number(c.root.dataset.id) : -1, true); c.destroy(); }
     this.cards.clear();
     this.cables.clear();
     this.modAnchors.clear();

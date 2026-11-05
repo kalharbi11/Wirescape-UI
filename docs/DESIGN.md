@@ -416,3 +416,11 @@ Phase-5 follow-up: audio settings tolerate zero devices, hide unsupported option
 Pi checkpoint B / OPEN-5 remains **unmeasured on hardware**. Cloud browser and source validation are not Pi measurements. The real-engine work remains phase 7.
 
 Phase-6 cloud frame samples (20 modules / 40 cables) and the recording procedure are in PERFORMANCE.md. The drone and Macro starter LFOs are moved below the Ladder and expanded touch Macro panels so controls remain clear. Every bundled starter is checked for card overlap at mouse and touch density.
+
+## 19. Revision after phases 3.5–6
+
+Keyboard note releases remember their original pitch across octave changes. Modal dialogs contain Tab navigation, restore focus on close, and block background note/edit shortcuts. Keyboard edits pending in history commit before a new pointer gesture; click changes commit at the end of that gesture, while repeated keyboard edits still group over 350 ms. Window blur releases a held history gesture.
+
+The ticker accumulates sparse `effective` parameter deltas until replaced or deleted, including updates received while off screen or between draws. A density rebuild preserves this state; graph load/undo starts a fresh telemetry epoch. Other telemetry fields remain packet snapshots. Faders only draw a rust live marker when the effective value differs from the base and clear it when values agree.
+
+See PHASE7_HANDOFF.md for native schema and asynchronous refusal gaps. Phase 7 must adapt these explicitly rather than assuming the prototype file is already a runnable native graph.

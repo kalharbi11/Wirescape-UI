@@ -266,6 +266,7 @@ export class App {
   // ---- patch lifecycle --------------------------------------------------
 
   loadPatch(patch: PatchV2, name = 'Untitled'): void {
+    this.ticker.resetTelemetry();
     this.doc.replace(patch);
     this.patchName = name;
     this.nameEl.textContent = name;
@@ -340,6 +341,7 @@ export class App {
   private restoreSnapshot(p: PatchV2): void {
     const view = this.doc.ui.view;
     this.canvas.select({ kind: 'none' });
+    this.ticker.resetTelemetry();
     this.doc.replace({ ...p, ui: { ...(p.ui ?? {}), view } });
     void this.engine.loadGraph(this.doc.toJSON());
     requestAnimationFrame(() => this.canvas.invalidateAnchors());
@@ -664,7 +666,7 @@ export class App {
 
   private attachShortcuts(): void {
     window.addEventListener('keydown', e => {
-      if (isTyping()) return;
+      if (isTyping() || this.settings.isOpen || this.shortcuts.isOpen) return;
       const mod = e.ctrlKey || e.metaKey;
       if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); this.exportPatch(); return; }
       if (mod && e.key.toLowerCase() === 'o') { e.preventDefault(); this.fileInput.click(); return; }
