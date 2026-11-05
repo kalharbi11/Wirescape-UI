@@ -16,13 +16,13 @@ Owner's previously recorded target: Pi 5B rev1.0 / BCM2712 / 8 GB RAM / MicroSD,
 
 ## B. Phase 7 test-harness revisions (from 3.5–6 audit)
 
-These are **tasks to implement on the Phase 7 branch before formal benchmarking**, not claims that existing tests have already been modified.
+The following instrumentation is now prepared on the Phase 7 branch. Hosted checks verify the harness; actual hardware measurements and owner acceptance remain NOT RUN.
 
-- [ ] **Long-duration timing:** `tests/review-artifacts.spec.ts` currently measures only 120 rAF intervals after ~30 settle frames per profile/zoom condition. For the Pi run, use a recorded warm-up and **15–30 seconds of sample time per condition**, with average rAF FPS, p95/p99 interval, long-frame counts (including >33.3ms and >50ms diagnostics), focus/visibility, telemetry apply cost and exact sample duration. Keep short hosted samples for fast CI if desired. Adjust the existing Pi test's 180-second timeout and runner job timeout if necessary.
-- [ ] **Realistic signals:** retain the 20-module/40-cable **10 LFO + 10 VCF** modulation-heavy fixture; it contains **no oscillator/Output** and cannot verify Mixer/Output scope or meter activity. Add a second deterministic **signal-bearing UI fixture** such as the built-in Two-source drone (VCO + Noise → Mixer → Ladder → Output, LFO cutoff modulation, FakeEngine held note) and assert meter/scope/signal-activity visual updates, without claiming audio.
-- [ ] **Profile behavior:** Normal/Pi × fit/100% at the real monitor's viewport, plus a **separate** 5-second under-40-FPS automatic Pi-profile watchdog test, its one-shot behavior and user opt-out. Stress setup currently forces `autoProfile: false`; it does not test this automatically.
-- [ ] **Environment capture:** log system Chromium version, renderer/backend (including software vs GPU if evident), OS/model/RAM, viewport/screen/DPR/refresh, current focus and page visibility; gather read-only load/free memory/disk/temperature/throttling pre/post when tools exist. Missing values are “unavailable,” never 0. Historical throttle flags alone do not imply an active power failure.
-- [ ] **Predetermined acceptance criteria:** physical target ≥30 measured UI FPS across the defined profiles/fixtures; inspect p95/p99 and long-frame/stutter rates, not average alone. Define a documented acceptable pacing threshold **before** final sign-off. The Pi profile's 30Hz telemetry/drawing cap is not the same quantity as displayed rAF FPS.
+- [x] **Long-duration timing instrumentation:** `tests/review-artifacts.spec.ts` retains 120-frame hosted samples. Pi conditions use a recorded2-second warm-up and **15 seconds of sample time per condition**, with average rAF FPS, p95/p99 interval, long-frame counts (including >33.3ms and >50ms diagnostics), focus/visibility, telemetry apply cost and exact sample duration. Keep short hosted samples for fast CI if desired. Adjust the existing Pi test's 180-second timeout and runner job timeout if necessary.
+- [x] **Realistic signal instrumentation:** retain the 20-module/40-cable **10 LFO + 10 VCF** modulation-heavy fixture; it contains **no oscillator/Output** and cannot verify Mixer/Output scope or meter activity. Add a second deterministic **signal-bearing UI fixture** such as the built-in Two-source drone (VCO + Noise → Mixer → Ladder → Output, LFO cutoff modulation, FakeEngine held note) and assert meter/scope/signal-activity visual updates, without claiming audio.
+- [x] **Profile behavior instrumentation:** Normal/Pi × fit/100% at the real monitor's viewport, plus a **separate** 5-second under-40-FPS automatic Pi-profile watchdog test, its one-shot behavior and user opt-out. Stress setup currently forces `autoProfile: false`; it does not test this automatically.
+- [x] **Environment capture instrumentation:** log system Chromium version, renderer/backend (including software vs GPU if evident), OS/model/RAM, viewport/screen/DPR/refresh, current focus and page visibility; gather read-only load/free memory/disk/temperature/throttling pre/post when tools exist. Missing values are “unavailable,” never 0. Historical throttle flags alone do not imply an active power failure.
+- [x] **Predetermined acceptance criteria:** physical target ≥30 measured UI FPS across the defined profiles/fixtures; inspect p95/p99 and long-frame/stutter rates, not average alone. Define a documented acceptable pacing threshold **before** final sign-off. The Pi profile's 30Hz telemetry/drawing cap is not the same quantity as displayed rAF FPS.
 
 ## C. Execute on the dedicated Pi UI runner
 
@@ -50,3 +50,25 @@ Download `pi-ui-<SHA>` with preflight, Playwright JSON/frame report, GPU/display
 Classify every stage as **PASS**, **UI ISSUE**, **RUNNER/DISPLAY BLOCKED**, or **NOT RUN / PHASE 8 DEPENDENCY**; never count missing evidence as green. Fix UI-only defects on Phase 7 with regression tests, then rerun hosted + physical acceptance on a final merged revision. **OPEN-5 remains open** until genuine physical results are reviewed.
 
 **Phase boundary:** a passing Phase 7 result certifies only the browser/Pi interface and FakeEngine visual path. The native v2 codec, async engine refusals, render-safe real telemetry, real audio/MIDI/OSC, DSP parity, audio dropouts/latency, native CPU contention, packaging and migration are Phase 8 ([native handoff](PHASE8_HANDOFF.md)).
+
+## Preparation review before hardware connection
+
+The split is accepted: PR7 integrates the already-reviewed cumulative app; PR8
+adds the UI-only acceptance harness. Merge7 first, retarget8 to main, confirm its
+final hosted checks, then merge8 and confirm main again before manual dispatch.
+Do not duplicate the implementation commits or merge old-look PR1.
+
+Initial pacing gates, fixed before hardware collection: mean rAF FPS ≥30,
+p95 ≤50ms, p99 ≤100ms, and no frame interval >250ms for every workload/profile/view.
+Report >33.3/>50/>100ms counts as diagnostics as well. A failed gate requires
+investigation; do not loosen it after seeing measurements without documenting
+and reviewing the reason. These are UI pacing gates, not audio realtime deadlines.
+
+Each Pi condition uses2s warm-up then15s sampling (8 conditions, at least136s
+plus functional setup). Hosted sampling stays short. The watchdog opt-out and
+one-transition behavior are tested independently using simulated slow frames.
+Read-only health snapshots are captured before and after the session; missing
+GPU/refresh/thermal data needs explicit qualification and owner desktop checks.
+
+Q-B remains an owner acceptance choice; this preparation changes no cable behavior.
+Pi is offline during commuting; no dispatch or service change is part of this work.
