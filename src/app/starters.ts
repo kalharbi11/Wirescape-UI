@@ -66,7 +66,7 @@ export const STARTERS: Starter[] = [
         { kind: 'signal', from: { module: 4, port: 'audio' }, to: { module: 5, port: 'audio' } },
         { kind: 'modulation', from: { module: 6, port: 'control' }, to: { module: 4, port: 'cutoff' }, amount: 0.4 },
       ],
-      { 1: [40, 100], 2: [40, 480], 3: [620, 240], 4: [1180, 240], 5: [1844, 250], 6: [1180, 620] },
+      { 1: [40, 100], 2: [40, 480], 3: [620, 240], 4: [1180, 240], 5: [1844, 250], 6: [1180, 820] },
     ),
   },
   {

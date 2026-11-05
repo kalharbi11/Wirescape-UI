@@ -67,3 +67,31 @@ for (const starter of qt) {
     expect(errors).toEqual([]);
   });
 }
+
+test('all bundled starters place cards without overlaps in mouse and touch profiles', async ({ page }) => {
+  await boot(page);
+  const failures: string[] = [];
+  for (const hit of ['mouse', 'touch']) {
+    await page.evaluate(hit => window.__wirescapeTest.setPref({ hit }), hit);
+    for (const starter of STARTERS) {
+      await page.evaluate(({ patch, name }) => {
+        window.__wirescapeTest.load(patch, name);
+        window.__wirescapeTest.fit();
+      }, { patch: starter.patch(), name: starter.name });
+      await settle(page);
+      const overlaps = await page.locator('.module').evaluateAll(cards => {
+        const bad = [];
+        for (let i = 0; i < cards.length; i++) for (let j = i + 1; j < cards.length; j++) {
+          const a = cards[i]!.getBoundingClientRect(), b = cards[j]!.getBoundingClientRect();
+          if (Math.min(a.right, b.right) - Math.max(a.left, b.left) > 2 &&
+              Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2) {
+            bad.push(`${cards[i]!.getAttribute('data-testid')} overlaps ${cards[j]!.getAttribute('data-testid')}`);
+          }
+        }
+        return bad;
+      });
+      failures.push(...overlaps.map(s => `${starter.id} / ${hit}: ${s}`));
+    }
+  }
+  expect(failures).toEqual([]);
+});
