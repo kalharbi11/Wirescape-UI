@@ -46,3 +46,7 @@ real audio contention or latency; those belong to phase7 in `wirescape`.
 
 Hosted UI checks run independently, so an unavailable physical runner cannot block
 the normal hosted regression job. Physical Pi runs serialize across revisions.
+
+The staged runbook and read-only comparison with the main repo are in
+[PI_UI_TEST_PLAN.md](PI_UI_TEST_PLAN.md). Pi testing remains unrun until connected;
+the owner allows future autorun, but current manual triggering is retained.
