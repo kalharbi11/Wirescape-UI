@@ -53,6 +53,32 @@ What that means: a 20-module patch of stock cards is roughly 0.5–1 ms on a lap
 | bifurcation map (P13-related, C4) | ~10 ms once, then an image |
 | 120 ms popup fade/scale | effectively free (compositor) |
 
+### App (Vite build)
+
+Headless Chromium, cloud x86 container, 1920×1080, DPR 1, 20 modules, 40 cables including 10 modulations, a note held. `ticker.applyMs` is ms per frame applying telemetry, averaged over 240 frames, two runs each, same session. Values are branch (old look) / reskin.
+
+| profile | zoom | branch (old look) | reskin | cards drawn (branch / reskin) |
+|---|---|---|---|---|
+| normal | fit | 0.25 / 0.33 | 0.13 / 0.26 | 20 / 20 |
+| normal | 100% | 0.09 / 0.13 | 0.11 / 0.22 | 6 / 11 |
+| pi (30 Hz) | fit | 0.45 / 0.50 | 0.33 / 0.38 | 20 / 20 |
+| pi (30 Hz) | 100% | 0.15 / 0.25 | 0.31 / 0.31 | 6 / 11 |
+
+- The branch's own recorded figure was 0.65 (fit) and 0.39 (100%).
+- At 100% the reskin's cards are smaller, so about twice as many are on screen. Per drawn card the cost is about the same.
+- Noisy (±50% run to run). Not Pi numbers (OPEN-5).
+
+**Reproduce:** `npm run build && npm run preview`, open http://localhost:4173, load a 20-module patch with 40 cables, hold a note. Press `` ` `` for the dev panel, which shows ms/frame applying telemetry. Or read `window.__wirescapeTest.ticker.applyMs` (smoothed) after the frames you want to average; the fit and 100% zoom come from `__wirescapeTest.fit()` and `zoomTo(1)`. Switch the Pi profile in preferences (`setPref`).
+
+**Where the reskin spends and saves time**
+
+- Knob, per frame: 1 transform. The text (live value) updates at ≤ 14 Hz.
+- Cables: the dotted (carrying signal) state is checked at 10 Hz and written to the DOM only when it flips.
+- Cable sag springs are stepped only while unsettled.
+- Filter and wave canvases redraw only when dirty.
+- Info boxes bind to the ticker only while open.
+- Meters are DOM transforms, not canvas.
+
 ## Library weights (if you ever need one)
 
 The kit uses **no libraries**; CSS transitions, the Web Animations API, CSS `linear()` springs and one rAF loop covered everything. Sizes are min+gzip; see [REFERENCES.md](REFERENCES.md) for sources.

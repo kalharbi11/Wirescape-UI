@@ -7,8 +7,8 @@ three contracts stable so the real engine can plug in.
 
 | what | where | state |
 |---|---|---|
-| Phases 1–3 app (Vite + TypeScript, fake engine, 21 modules from data, every cable gesture, live values, 23 Playwright tests) | branch `claude/new-session-p817y1` | built in the **old** look (the Studio 01 sketch, cables coloured by hint) |
-| New design system (control-jam rounds 1–2) | `main`: `docs/DESIGN.md`, `ui/wirescape-ui-kit.html`, `ui/tokens.css`, `docs/DECISIONS.md` | decided; the kit is the reference implementation |
+| Phases 1–3 app (Vite + TypeScript, fake engine, 21 modules from data, every cable gesture, live values), reskinned to the design system (**phase 3.5, done**) | `main` once branch `phase/3.5-reskin` merges: `src/`, `tests/`, `public/`, `index.html`, `reference/`; 23 session + 12 kit-control Playwright tests | in the new look; the old look survives only on branch `claude/new-session-p817y1` |
+| Design system (control-jam rounds 1–2) | `main`: `docs/DESIGN.md`, `ui/wirescape-ui-kit.html`, `ui/tokens.css`, `docs/DECISIONS.md` | decided and now implemented in `src/`; the kit stays the reference |
 | Brief (phases, contracts, fake engine, Pi rules, done checklist) | branch: `reference/Wirescape_UI_prototype_brief.md`; Claude Doc linked in AGENTS.md | phases 4–6 not started |
 | Engine, modules, patch v2, MIDI, Pi runner | `kalharbi11/wirescape` (paused) | Qt UI frozen; becomes the real engine behind `EngineClient` |
 
@@ -19,7 +19,7 @@ three contracts stable so the real engine can plug in.
 
 ## Phases
 
-### Phase 3.5: merge and reskin (next, one chat)
+### Phase 3.5: merge and reskin (done on branch `phase/3.5-reskin`; conflicts listed in DECISIONS.md)
 Bring the phase 1–3 app onto `main` and dress it in the new design system.
 - **Merge:** take `src/`, `tests/`, `public/`, `index.html`, package/config files, `.gitignore` and `reference/` from the branch. Keep `main`'s `docs/` and `ui/`, and keep `AGENTS.md`. Fold the branch's root `DESIGN.md` into `docs/DESIGN.md` as new sections: contracts, card sizing, gestures, test hooks, frame figures. Where the two disagree, **`docs/DESIGN.md` and `DECISIONS.md` win**. List every conflict you resolve in `DECISIONS.md`.
 - **Don't commit** `docs/shots/` or `docs/recordings/` (binaries). Attach screenshots to the PR instead.
@@ -43,7 +43,7 @@ Bring the phase 1–3 app onto `main` and dress it in the new design system.
   - `loop ms/frame` with 20 modules and 40 cables is at or below the branch's figure
   - the PR shows before/after screenshots
 
-### Owner checkpoint A (after 3.5, about 30 minutes)
+### Owner checkpoint A (next, after 3.5, about 30 minutes)
 Open it on the laptop **and on the Pi in Chromium**. Patch a synth by hand, then answer the open items
 below in `DECISIONS.md` or the PR. This is the "more UI testing" step. Do it here, not later.
 

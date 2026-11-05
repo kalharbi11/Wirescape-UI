@@ -1,0 +1,11 @@
+{
+  "code": "MIX",
+  "roles": {
+    "level_a": "fader",
+    "level_b": "fader"
+  },
+  "short": {
+    "level_a": "A",
+    "level_b": "B"
+  }
+}

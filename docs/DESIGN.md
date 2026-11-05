@@ -1,6 +1,6 @@
 # Wirescape UI — design spec
 
-Status: **current** (after control jam rounds 1 and 2, 2026-11-05).
+Status: **current** (after control jam rounds 1 and 2 and the phase 3.5 merge, 2026-11-05).
 Live reference: [`ui/wirescape-ui-kit.html`](../ui/wirescape-ui-kit.html). Open it in Chromium; every control works and the top bar shows the real per-frame cost.
 Anything not in this file or the kit is either archived ([ARCHIVE.md](ARCHIVE.md)) or rejected ([DECISIONS.md](DECISIONS.md)).
 
@@ -135,7 +135,7 @@ Parameter-to-control rule set (it can be inferred from the module data):
 ## 6. Displays
 
 - No background box and no border.
-- Waveforms (VCO, LFO): a fading dot grid (1 px dots every 8 px, alpha falling to 0 at the edges, pre-rendered once per size), a 1.1 px ink line with round joins, and **3–4 px horizontal inset** so strokes never clip at the canvas edge. The LFO adds a rust phase line, a dot and `φ 116° +0.90`.
+- Waveforms (VCO, LFO): a fading dot grid (1 px dots every 8 px, alpha falling to 0 at the edges, pre-rendered once per size), a 1.1 px ink line with round joins, and **3–4 px horizontal inset** so strokes never clip at the canvas edge. The LFO adds a rust phase dot and `φ 116° +0.90`; **no phase line** (owner, 3.5 review).
 - Filter curve: frequency grid (100 / 1 k / 10 k darker), dashed 0 dB line, dashed set-cutoff line, rust live-cutoff line, a light rust fill under the live curve; in graph mode, a hollow peak handle and `fc · Q` in rust.
 - Envelope: baseline axis with segment ticks, 1 px curve, 3.2 px hollow handles, dotted sustain guide, A D S R letters (the active one in rust), rust voice dot. Number boxes below.
 
@@ -145,6 +145,14 @@ Parameter-to-control rule set (it can be inferred from the module data):
 - **Proportions:** `tall` (default) or `wide` (a display beside the controls, for modules that need room). Each module picks one; they need not match.
 - **Header (A):** `CODE  Name ……… id` in a 6×12 px padded row with a hairline under it. The **i** sits at the right end. View switches (knobs ⇄ graph) also sit in the header.
 - **Ports: side rails.** Inputs on the left edge, outputs on the right, spread evenly along the full height, the 12 px jack straddling the card edge, label inside. Jack ring 1.5 px in the hint colour, graphite hole.
+- **Parameter nodes** (owner, 3.5 review). A modulatable parameter can have its own node on the left rail, under the signal inputs: a 10 px jack with a rust ring and a rust label (rust = modulation). A modulation cable lands on the node, never on the knob.
+  - A few **essential** parameters always have a node: `modPorts` in `panels/<id>.json`, else the hero and primary modulatable parameters, at most 2 (VCF: cutoff, resonance).
+  - Any other parameter gets a node **the moment something modulates it**, and loses it with its last cable, so modules with many parameters (CHAOS-lite has 22) stay clean.
+  - Dragging from a node with a cable pulls that cable off; from an empty node it starts a cable you drop on an output.
+- **Mapping.** Right-click a signal output → **Map to a parameter…**: every modulatable knob on the other modules shows a pulsing dashed rust ring (and existing parameter nodes pulse). Click one to map it (amount +0.30); the node appears and the cable lands there. The other way round: right-click a knob → **Map from a source…**, then click an output. Esc or a click elsewhere cancels. Dropping a cable on a knob or a node still works.
+- **Collapsed rails** (Grasshopper-style). A side with more than 5 ports shows 4 (or `ports.<side>.shown`), plus any that are connected, and a `− 4/8 +` control under the last node. `ports.<side>.priority` picks which show first (MIDI to CV: pitch, gate, velocity, notes). The count is saved per module in `ui.portsShown`.
+- **CC numbers.** With `ports.output.assign: "cc"` (CC to CV) each output label reads `CC 1` and is typed into on click (0–127), saved in `ui.ccMap[module][port]`. *Note for the code team:* the engine has no CC-number parameter yet; this needs one per output (or a mapping message) before it does anything.
+- **Header name.** When a module's name only repeats its code (`VCF VCF`), the header shows the category instead (`VCF Filter`, `LFO Motion`, `ENV ADSR` stays).
 - **Layout inside:** hero first, primaries in a row, trims and selectors last. Use a display only where it explains something you can't hear on your own.
 - **Filter graph mode** (multimode filters only): a header switch between `KNOBS` and `GRAPH`. *Note for the code team:* graph mode should add control you only get by seeing the curve, as EQ Eight does: drag the peak for cutoff + resonance, scroll on the peak for slope (12/24 dB), and a drive lift on the curve. Simple filters stay knob-only.
 
@@ -167,8 +175,172 @@ The stock set in the kit: VCF (hero-led), VCF multimode with the view switch, VC
 - Colour carries no meaning; the user picks it from the palette (§2).
 - **Idle:** solid 1.6 px. **Carrying signal:** dotted (round caps, dash 0.1/5, 2.4 px), static (OPEN-4). **Selected:** 2.6 px.
 - Drag: sag spring as above. Hit area 12 px.
+- **One smooth cubic, near level at each node** (owner, 3.5 review, revised). A cable leaves an output to the right and enters an input from the left, then bends in one curve: controls at `a + (L, s)` and `b − (L, −s)`, reach L = clamp(0.4·|dx| + 0.18·|dy| (+40 when backward), 28, 180) px, droop s from the sag spring, capped at 0.85·L so each end stays within ~40° of level. The end at a node stays visible even when the cable routes behind a card; no midpoint kink, no long rigid straight lead.
 
-## 10. Open items
+## 10. Contracts
+
+The app is built against three contracts. Nothing below them may change without the real engine agreeing.
+
+| contract | where | notes |
+|---|---|---|
+| Module data | `public/wirescape_modules.json`, typed in `src/modules/types.ts`; optional `public/panels/<id>.json` | loaded at boot; nothing is hand-coded per module |
+| Engine interface | `src/engine/EngineClient.ts` | `FakeEngine` is the only implementation and the only place values are invented; `RealEngine` will replace it |
+| Patch file | `src/patch/types.ts` (patch v2) | `PatchDoc` is the in-memory document; unknown fields round-trip |
+
+- **Port identity is (direction, id), not id.** The catalogue reuses a port `id` across directions on one module (`essentials.ladder`, `essentials.output` and `essentials.vca` have an input and an output called `audio`; `essentials.scale_offset` and `essentials.slew` use `control` on both). Every lookup keys on the pair. Patch v2 endpoints stay `{module, port}`; the direction follows from the side of the connection.
+- **Modulation is summed in knob space:** `effective = normToValue(param, valueToNorm(param, base) + Σ amount × source)`, clamped to 0–1 travel. An `amount` of 0.4 means four tenths of the knob's travel in any unit and respects the taper. Summing in the parameter's own units would make one amount a 4 ms nudge on an envelope and an 8 kHz leap on a cutoff. **Open question for the engine team (OPEN-9):** confirm the real engine does the same, or saved amounts will not transfer.
+- **Unknown fields:** `PatchDoc` keeps the object each module and connection was parsed from and spreads it back on save; unrecognised top-level and `ui` keys are held in `extras`. Covered by a test.
+- **Telemetry `outputs` (optional):** `outputs?: Record<'module:port', number>` is the current value (−1..1) of each connected signal output; audio outputs report their level. It drives dotted cables (§9) and the info-box sparklines. An engine that omits it still conforms. No `EngineClient` method changed.
+- **Patch `ui.cableColors`:** `Record<connKey, paletteName>` inside `ui` (palette names: ink, rust, blue, olive, ochre, slate; default ink). IDs are unchanged.
+
+## 11. Card sizing
+
+Each module type keeps its own size (no grid), but the size comes from data.
+
+- **Width** is derived: input gutter + output gutter + the widest row of controls (or the widest pane; in a `wide` card, pane + controls), plus 12 px padding per side. The header must also fit. The override key `width` replaces it. Gutters are sized from the longest port label: 22 + 5.6 px per character, at most 132 px, 14 px with no ports.
+- **Height is measured once**, after the card is in the DOM, because the controls are content-sized. Measuring is batched for a whole patch (Pi rule 8). Port anchors are then derived from that height and never read again. A minimum height keeps the port pitch.
+- **Ports** sit on side rails and are spread evenly over the card height. `HEADER_H` = 30 px. Minimum port pitch 30 px (mouse), 42 px (touch). Minimum height = `HEADER_H` + (port rows + 1) × pitch.
+- Control footprints used for the width: knob L 150, M 84, S 58 px; fader 46; select 150; item gap 10.
+- Fonts (IBM Plex, `@fontsource`, latin 400/500/600) are bundled so the Pi works offline. Boot waits for them because heights are measured.
+- A test checks every module in both hit profiles for overflow.
+
+**`panels/<id>.json` override keys** (all optional; listed in `public/panels/index.json`):
+
+| key | effect |
+|---|---|
+| `code` | header code (`VCF`); derived from the id when absent |
+| `width` | card width in px |
+| `layout` | `tall` (default) or `wide` |
+| `sections` | explicit rows of parameters: `label`, `columns`, `params`, legacy `hero` (lifts a secondary S to M) |
+| `short` | shorter labels for cramped controls |
+| `roles` | role per parameter (below) |
+| `widgets` | force a widget kind (older overrides; `roles` is preferred) |
+| `panes` | displays: `wave`, `envelope`, `meter`, `scope`, `steps`, `filter` |
+| `paneOptions` | options per pane (the filter pane reads `graph` to offer KNOBS/GRAPH) |
+| `hidden` | parameters left off the card (still saved and modulatable) |
+
+**Roles.** Roles are `hero | primary | secondary | trim | mode | toggle | fader | number | readout | select`. When `roles` has no entry, the role is inferred in this order, per parameter:
+
+1. has choices but is not a real choice (one choice) → `readout`
+2. stepped 0/1 off/on → `toggle`
+3. choices: up to 4 → `mode` (segmented), more → `select` (dropdown)
+4. unit dB → `fader`
+5. unit BPM, or step ≥ 1 and not modulatable → `number`
+6. minimum < 0 → `trim`
+7. first modulatable Hz or time parameter → `hero`
+8. otherwise `secondary`; the first two secondaries become `primary`
+
+Knob tiers: hero L, primary and secondary M, trim S. Auto sections have no labels and run in this order: hero, primaries, secondaries and faders, trims/numbers/readouts, modes/toggles/selects. Labels exist only where an override gives them. **Any parameter an override forgets is still placed, in a trailing "MORE" section.** A panel cannot silently drop a control.
+
+## 12. Gestures
+
+| gesture | behaviour |
+|---|---|
+| Drag a module header | moves it; moves the whole selection if it is selected |
+| Drag empty canvas | pan |
+| Shift-drag empty canvas, or middle-drag | box-select (adds to the selection) |
+| Shift-click a module | add to / remove from the selection |
+| Wheel, or trackpad pinch | zoom centred on the pointer, 25 %–185 % |
+| Two-finger pinch | zoom (touch) |
+| Double-click empty canvas | quick-add search at that point |
+| Drag output → input, or input → output | patch a cable (either direction) |
+| Drag from a *connected* input | grabs that cable's end to move it or pull it off |
+| Alt-drag from a connected input | starts a new cable instead |
+| Drop a cable on empty canvas | quick-add filtered to modules with a matching port; picking one completes the cable |
+| Drop a signal output on a knob, or on a parameter node | modulation, starting at amount +0.30 (a re-dropped cable keeps its amount) |
+| Right-click a signal output → Map to a parameter… | knobs on other modules light up; click one to map it; Esc cancels |
+| Right-click a knob → Map from a source… | outputs on other modules light up; click one |
+| Drag from a parameter node | with a cable: pull it off; without: start one, drop it on an output |
+| `−` / `+` under a collapsed rail | show one fewer / one more port |
+| Click a `CC n` label (CC to CV) | type the CC number |
+| Shift-drop on a signal input | adds alongside instead of replacing |
+| Click a cable | select it; a tool box appears at its midpoint; Delete removes it |
+| Selected cable: colour swatches | pick ink, rust, blue, olive, ochre or slate; stored in `ui.cableColors` |
+| Selected modulation cable: `amount +30%` | drag sideways 0.004 per px (shift 0.001); arrows ±0.01 (shift ±0.002); range −1…+1 |
+| Hover a cable | title shows "from → to", and the amount for a modulation |
+| Knob: drag | 180 px of travel covers the full range; shift ≈ 4.6× finer (≈ 830 px) |
+| Knob: wheel | ±0.02 travel (±0.004 with shift) |
+| Knob: arrows | ±0.01 travel (±0.002 with shift); PageUp/Down ±0.1; Home/End to the ends |
+| Knob: double-click | reset to the default |
+| Knob readout: click | type a value |
+| Knob: no modulation handle | the depth is edited on the selected cable |
+| Header KNOBS / GRAPH (VCF) | graph: drag the peak for cutoff + resonance; the card keeps its height |
+| Envelope handles | hollow, draggable on the display; ADSR stages also as number boxes below |
+| Number box: drag sideways | 0.004 of travel per px |
+| Number box: click | type a value; arrows ±0.01 (shift ±0.002); double-click resets |
+| Fader: drag | moves the thumb; wheel and arrows nudge (shift finer); Home/End to the ends; double-click resets; no typing yet (OPEN-8) |
+| Segmented, toggle, select | click |
+
+**Replace or add:** a signal input takes one cable; a second drop replaces the first; shift-drop adds. The PLAN default for Q-B is "add (sum)"; this is still to be confirmed.
+
+**Stereo pairs:** when both ends belong to a two-port stereo group, a bar offers to connect L and R together. Pairing is positional (OPEN-10). Declining connects the one cable.
+
+**Feedback cables:** a cable whose target can already reach its source gets a small chevron at its midpoint.
+
+## 13. Test hooks
+
+Every interactive element carries a `data-testid`; a test asserts none is missing. `window.__wirescapeTest` (`App.testApi`) exposes `state()`, `load()`, `save()`, `autosaveNow()`, `clearAutosave()`, `patchName()`, `zoomTo()`, `fit()`, `addModule()`, `connect()`, `select()`, `deleteSelection()`, `setPref()`, `noteOn()`, `noteOff()`, `effective()`, `fps()`, `starters`, and the live `doc`, `engine`, `ticker`, `canvas` and `registry`.
+
+| testid | element |
+|---|---|
+| `module-<id>`, `module-header-<id>`, `module-title-<id>`, `poly-<id>` | card, header, title, poly badge |
+| `port-<id>-<direction>-<port>` | jack |
+| `param-port-<id>-<param>` | parameter node |
+| `ports-more-<id>-<direction>`, `ports-less-<id>-<direction>` | collapsed-rail + / − |
+| `context-menu`, `context-map` | right-click menu, its Map item |
+| `knob-<id>-<param>`, `readout-<id>-<param>`, `readout-input-<id>-<param>` | knob, its readout, the typing input |
+| `number-<id>-<param>` | number box |
+| `fader-<id>-<param>`, `fader-thumb-<id>-<param>` | fader, thumb |
+| `seg-<id>-<param>-<value>`, `segmented-<id>-<param>` | segmented button, group |
+| `toggle-<id>-<param>`, `select-<id>-<param>` | toggle, dropdown |
+| `view-<id>-knobs`, `view-<id>-graph` | header view switch |
+| `filter-<id>`, `wave-<id>`, `envelope-<id>`, `scope-<id>`, `meter-<id>`, `steps-<id>` | displays |
+| `info-<id>-<param>`, `module-info-<id>` (plus `-box`) | parameter and module info buttons and boxes |
+| `cable-<key>`, `cable-tools`, `cable-color-<name>`, `cable-amount` | cable, selected-cable tools |
+| `library-item-<module-id>`, `quick-add-<module-id>`, `debug-<switch>` | library, quick-add, dev switches |
+
+Tests (`npm test`): 23 in `tests/session.spec.ts` (21 test blocks; the patching test runs at 50/100/185 % zoom) 12 in `tests/kit-controls.spec.ts` for the kit controls, and 5 in `tests/review-35.spec.ts` for the owner's 3.5 review (parameter nodes, mapping, collapsed rails and CC numbers, cable leads).
+
+## 14. Frame figures
+
+Headless Chromium, cloud x86 container, 1920×1080, DPR 1; 20 modules, 40 cables including 10 modulations, a note held. Value is ms per frame applying telemetry (`ticker.applyMs`), averaged over 240 frames, two runs each, same session.
+
+| profile | zoom | branch (old look) | reskin | cards drawn (branch / reskin) |
+|---|---|---|---|---|
+| normal | fit | 0.25 / 0.33 | 0.13 / 0.26 | 20 / 20 |
+| normal | 100% | 0.09 / 0.13 | 0.11 / 0.22 | 6 / 11 |
+| pi (30 Hz) | fit | 0.45 / 0.50 | 0.33 / 0.38 | 20 / 20 |
+| pi (30 Hz) | 100% | 0.15 / 0.25 | 0.31 / 0.31 | 6 / 11 |
+
+- The branch's own recorded figure was 0.65 (fit) and 0.39 (100%).
+- At 100% the reskin's cards are smaller, so about twice as many are on screen. Per drawn card the cost is about the same.
+- Numbers are noisy (±50% run to run). These are not Pi numbers (OPEN-5). Method and cost sources: [PERFORMANCE.md](PERFORMANCE.md#app-vite-build).
+
+## 15. App layout of the source
+
+```
+src/
+  modules/    the catalogue: types, registry, taper maths, value formatting
+  patch/      PatchDoc and the patch v2 types. No DOM.
+  engine/     EngineClient (the contract) and FakeEngine (the only invention)
+  canvas/     Viewport, CableLayer, ModuleCard, PatchCanvas
+  panels/     layouts.ts (roles, sizing), PanelBuilder, panes.ts, widgets/
+                widgets: Knob, NumberBox, Fader, Segmented, Toggle, Selector,
+                InfoBox, FilterDisplay, WavePreview, EnvelopeCurve, Meter,
+                Scope, StepsPane
+  runtime/    Ticker, the single animation loop
+  system/     status bar, toasts
+  styles/     app, chrome, controls, displays, info CSS
+  theme/      tokens.css and preferences
+  app/        App, Library, QuickAdd, Keyboard, DevPanel, Modal, starters
+public/
+  wirescape_modules.json    the real catalogue, unmodified
+  panels/<module-id>.json   optional per-module layout overrides
+tests/        session.spec.ts, kit-controls.spec.ts, helpers.ts
+reference/    the brief and the first visual sketch
+```
+
+## 16. Open items
 
 | id | question | current default |
 |---|---|---|
@@ -179,4 +351,12 @@ The stock set in the kit: VCF (hero-led), VCF multimode with the view switch, VC
 | OPEN-5 | Pi measurements of the kit (FPS, ms per frame) | not measured yet; see PERFORMANCE.md |
 | OPEN-6 | which stock modules are `wide` | VCF offers both; others tall |
 | OPEN-7 | the Clock card was not reviewed in round 2 | as in round 1 |
-| OPEN-8 | typed value entry on click (brief) | not built in the kit |
+| OPEN-8 | typed value entry on click (brief) | typed entry exists on knob readouts and number boxes (from the branch); no typing on faders yet |
+| OPEN-9 | modulation maths: does the real engine sum in knob space (§10)? saved amounts depend on it | knob space |
+| OPEN-10 | stereo pairing is positional (Nth stereo output to Nth stereo input); the catalogue marks `stereo_pair: "stereo"` without naming L/R. A real group id would be better | declaration order |
+| OPEN-11 | poly cable weight: moot. Cable weight no longer depends on kind or poly (§9). Whether `poly` on a port is static or the runtime voice count is still unanswered | not used by the UI |
+| OPEN-12 | instance labels are stored in `ui.labels`, keyed by instance id; confirm the real format or name the field | `ui.labels` |
+| OPEN-13 | patch name is stored in `ui.name` by the autosave wrapper; should patch v2 carry a name? | `ui.name` |
+| OPEN-14 | backward cables (target left of source) draw as a wide curve across the canvas; busy in a dense patch. A routing pass that bows them vertically may help | drawn as is |
+| OPEN-15 | `example.step_sequencer` gate parameters are `0=Rest, 1=Note, 2=Tie` with `step: 1`; the placeholder grid cycles three states. The signature panel should show tie as a joining bar | placeholder grid |
+| OPEN-16 | the CPU figure is faked from the module count; what does the real engine report, DSP load or process CPU? | faked |

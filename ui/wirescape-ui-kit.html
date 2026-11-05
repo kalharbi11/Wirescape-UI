@@ -322,6 +322,11 @@ body[data-tex=lines]{background-image:linear-gradient(var(--hair2) .5px,transpar
 .shelf td,.shelf th{text-align:left;padding:5px 8px;border-bottom:.5px solid var(--hair2)}
 .shelf th{color:var(--mute);font-weight:500;font-size:9.5px}.shelf b{color:var(--rust)}
 .fb{display:none}
+.jk.param{color:var(--rust)}.jk.param .jd{width:10px;height:10px;margin:1px}.jk.param .jd::after{background:var(--rust);opacity:.55;inset:2.5px}
+.pctl{display:flex;align-items:center;gap:3px;font:500 7.5px var(--mono);color:var(--mute)}
+.pctl button{width:14px;height:14px;border-radius:50%;border:.5px solid var(--graph);background:var(--card);font:500 10px/12px var(--mono);padding:0;cursor:pointer}
+.pctl button:hover{background:var(--ink);color:var(--card)}
+.cc{border-bottom:1px dotted var(--mute);cursor:text}
 .card{border-radius:14px}.card .ch{padding:6px 12px}
 .cp{justify-content:space-evenly}.cp.in{margin-left:-15px}.cp.out{margin-right:-15px}
 .card.wide .cm{flex-direction:row}
@@ -695,8 +700,8 @@ function xy(px,py,o={}){
   return el;
 }
 /* ================= jacks, cards ================= */
-const HINT={audio:C.ink,pitch:C.blue,cv:C.olive,gate:C.rust,ev:C.plum};
-function jack(label,hint='audio',dir='in'){const el=h('div',{class:'jk '+dir});const d=h('i',{class:'jd',style:`--hc:${HINT[hint]}`});const r=h('i',{class:'jr'});d.append(r);const l=h('span',null,label);dir==='in'?el.append(d,l):el.append(l,d);
+const HINT={audio:C.ink,pitch:C.blue,cv:C.olive,gate:C.rust,ev:C.plum,param:C.rust};
+function jack(label,hint='audio',dir='in'){const el=h('div',{class:'jk '+dir});const d=h('i',{class:'jd',style:`--hc:${HINT[hint]}`});const r=h('i',{class:'jr'});d.append(r);const l=h('span',null,label);if(hint==='param')el.classList.add('param');dir==='in'?el.append(d,l):el.append(l,d);
   el.pulse=()=>{r.getAnimations().forEach(a=>a.cancel());r.animate([{transform:'scale(1)',opacity:.9},{transform:'scale(2.4)',opacity:0}],{duration:380,easing:'cubic-bezier(.2,.7,.3,1)'});};return el;}
 function card(code,name,o={}){
   const el=h('div',{class:'card',style:o.w?`width:${o.w}px`:''});const J={};
@@ -879,6 +884,8 @@ const ARCHIVE=[['P1','Tri-spoke control shape',1,'N1','the arm-and-dot shape, no
 /* ================= final helpers ================= */
 const DG={};function dotGrid(W,H){const k=W+'x'+H;if(DG[k])return DG[k];const cv=document.createElement('canvas');cv.width=W*DPR;cv.height=H*DPR;const x=cv.getContext('2d');x.scale(DPR,DPR);x.fillStyle=C.mute;
   for(let i=4;i<W;i+=8)for(let j=3;j<H;j+=8){const d=Math.hypot((i-W/2)/(W/2),(j-H/2)/(H/2)),a=clamp(1-d)*.55;if(a<.03)continue;x.globalAlpha=a;x.fillRect(i,j,1,1);}return DG[k]=cv;}
+/* cable with a horizontal lead at each node (DESIGN §9) */
+function cablePath(a,cp,b){const L=Math.min(140,Math.max(36,Math.abs(b.x-a.x)*.3+Math.abs(b.y-a.y)*.12)),tx=(b.x-a.x)/4,ty=(b.y-a.y)/4,f=n=>n.toFixed(1);return`M${f(a.x)} ${f(a.y)}C${f(a.x+L)} ${f(a.y)},${f(cp.x-tx)} ${f(cp.y-ty)},${f(cp.x)} ${f(cp.y)}S${f(b.x-L)} ${f(b.y)},${f(b.x)} ${f(b.y)}`;}
 const row=(...k)=>h('div',{class:'row',style:'align-items:center'},...k);
 const lab=(t)=>h('span',{class:'cap-l'},t);
 function attach2(host,btnParent,make){const b=h('i',{class:'ib'},'i');btnParent.append(b);let P_=null,open=false,pin=false;
@@ -951,14 +958,14 @@ item(sec,'D3','Envelope on a baseline','Drag the handles; the clock plays a note
 const sec=section('04','modules','Modules',`<p>Cards have a 14 px radius. Two proportions: <b>tall</b> (default) and <b>wide</b> (for modules with a display or many controls); a module picks the one it needs. The header is code · name · instance id. Ports sit on the side rails, spread along the full height, straddling the edge: inputs left, outputs right.</p>`,null);
 sec.grid.style.gridTemplateColumns='repeat(auto-fill,minmax(400px,1fr))';
 item(sec,'M1','VCF · hero-led','Big cutoff, two primaries, two trims (key tracking and the LFO depth, which really drives the cutoff modulation), a mode selector, and a thin response strip as a hint rather than a display.',{},st=>{
-  const c=card('VCF','Filter',{inst:'#3',ins:[['in','audio'],['cut','cv'],['res','cv']],outs:[['out','audio']]});
+  const c=card('VCF','Filter',{inst:'#3',ins:[['in','audio'],['cutoff','param'],['res','param']],outs:[['out','audio']]});
   c.mid.append(vcfDisplay(canv(176,40),{labels:false}),knob(P.cut,{tier:'L'}).w,h('div',{class:'row'},knob(P.res).w,knob(P.drive).w),h('div',{class:'row',style:'align-items:center'},knob(P.kt,{tier:'S'}).w,knob(P.depth,{tier:'S',label:'LFO→fc'}).w,seg(P.fmode)));st.append(c.el);});
 item(sec,'M2','VCF · multimode, knobs ⇄ graph','The view switch is in the header. Graph mode is for filters where seeing the curve adds control (see DESIGN.md §Modules).',{},st=>{
-  const c=card('VCF','Multimode',{inst:'F4',ins:[['in','audio'],['cut','cv']],outs:[['out','audio']]});const vp=new Param({name:'View',choices:['KNOBS','GRAPH'],def:0});
+  const c=card('VCF','Multimode',{inst:'F4',ins:[['in','audio'],['cutoff','param'],['res','param']],outs:[['out','audio']]});const vp=new Param({name:'View',choices:['KNOBS','GRAPH'],def:0});
   c.el.querySelector('.ch').append(seg(vp));const A_=h('div',{class:'col'},knob(P.cut,{tier:'L'}).w,row(knob(P.res).w,knob(P.drive).w)),B_=h('div',{class:'col'},vcfDisplay(canv(250,118),{handle:true,readout:true,drag:true}),row(numBox(P.cut),numBox(P.res)));
   const sw=()=>{const g=Math.round(vp.v)===1;A_.style.display=g?'none':'';B_.style.display=g?'':'none';};vp.on(sw);sw();c.mid.append(A_,B_,seg(P.fmode));st.append(c.el);});
 item(sec,'M3','VCF · wide','The same filter in the wide proportion: display beside the controls.',{wide:true},st=>{
-  const c=card('VCF','Filter',{inst:'F4',ins:[['in','audio'],['cut','cv'],['res','cv']],outs:[['out','audio']]});c.el.classList.add('wide');c.mid.style.flexDirection='row';c.mid.style.alignItems='center';
+  const c=card('VCF','Filter',{inst:'F4',ins:[['in','audio'],['cutoff','param'],['res','param']],outs:[['out','audio']]});c.el.classList.add('wide');c.mid.style.flexDirection='row';c.mid.style.alignItems='center';
   c.mid.append(h('div',{class:'col'},vcfDisplay(canv(170,70),{labels:false}),seg(P.fmode)),knob(P.cut,{tier:'L'}).w,h('div',{class:'col'},knob(P.res).w,knob(P.drive).w),h('div',{class:'col'},knob(P.kt,{tier:'S'}).w,knob(P.depth,{tier:'S',label:'LFO→fc'}).w));st.append(c.el);});
 item(sec,'M4','VCF · slim strip','A narrow 4 HP-style column with faders for the two main parameters. It packs densely in a big patch and reads as a strip of levels. Compare the same parameters as knobs in S1.',{},st=>{
   const c=card('VCF','',{inst:'#3',w:150});
@@ -968,13 +975,13 @@ item(sec,'M5','VCO','Tune is the hero; the readout speaks music (note, cents, Hz
   const c=card('VCO','Oscillator',{inst:'65',ins:[['v/oct','pitch'],['fm','cv'],['sync','gate']],outs:[['out','audio'],['sub','audio']]});const ro=h('div',{class:'big-ro'});
   c.mid.append(ro,waveCanvas(190,54),seg(P.oct),knob(P.tune,{tier:'L'}).w,row(knob(P.shape).w,knob(P.fine,{tier:'S'}).w,knob(P.fm,{tier:'S'}).w),slider(P.pw,{w:170}));
   addTick(ro,(t,dt,f)=>{if(f%5)return;const fr=261.63*Math.pow(2,Math.round(P.oct.v)-2)*Math.pow(2,(P.tune.liveV()+P.fine.v/100)/12),no=noteOf(fr);ro.innerHTML=`${no.name} ${no.c>=0?'+':''}${no.c}¢<small>${fmt(fr,'Hz')}</small>`;});st.append(c.el);});
-item(sec,'M6','LFO · drives "LFO 1" on this page','Wave view with phase dot on the dot grid. EOC pulses its port each cycle.',{},st=>{
+item(sec,'M6','LFO · drives "LFO 1" on this page','Wave view with a phase dot on the dot grid (no phase line). EOC pulses its port each cycle.',{},st=>{
   const c=card('LFO','Low-frequency osc.',{inst:'47',ins:[['rate','cv'],['reset','gate']],outs:[['out','cv'],['inv','cv'],['eoc','gate']]});const W=210,H=74,D=canv(W,H);
   lfoWrap.push(()=>{if(P.lfoRate.v<10&&G.motion!=='off')c.J.eoc.pulse();});
   c.mid.append(D.el,row(knob(P.lfoRate,{tier:'L'}).w,detent(P.lfoShape,{icons:true,label:'Shape',sz:98})),row(knob(P.lfoDepth).w,knob(P.lfoPhase,{tier:'S'}).w,toggle(P.lfoSync,{label:'sync'})));
   addTick(D.el,()=>{const{ctx}=D,sh=Math.round(P.lfoShape.v),ph=(lfoPh+P.lfoPhase.v/360)%1,v=S.lfo1,cy=H/2,A=H*.36,x0=4,x1=W-4,X=k=>x0+k*(x1-x0);ctx.clearRect(0,0,W,H);ctx.drawImage(dotGrid(W,H),0,0,W,H);
     ctx.beginPath();for(let x=x0;x<=x1;x++){const y=wave(sh,(x-x0)/(x1-x0))*P.lfoDepth.v;x>x0?ctx.lineTo(x,cy-y*A):ctx.moveTo(x,cy-y*A);}ctx.strokeStyle=C.ink;ctx.lineWidth=1.1;ctx.lineJoin='round';ctx.stroke();
-    const px=X(ph);ctx.strokeStyle=C.rust;ctx.lineWidth=.6;ctx.beginPath();ctx.moveTo(px,2);ctx.lineTo(px,H-2);ctx.stroke();ctx.fillStyle=C.rust;ctx.beginPath();ctx.arc(px,cy-v*A,2.8,0,7);ctx.fill();
+    const px=X(ph);ctx.fillStyle=C.rust;ctx.beginPath();ctx.arc(px,cy-v*A,2.8,0,7);ctx.fill();
     ctx.font='8px "IBM Plex Mono",monospace';ctx.fillStyle=C.mute;ctx.textAlign='right';ctx.fillText(`φ ${(ph*360).toFixed(0)}°  ${v>=0?'+':''}${v.toFixed(2)}`,W-4,9);});
   st.append(c.el);});
 item(sec,'M7','ENV','Edit on the curve; underline-free plain numbers below.',{},st=>{const c=card('ENV','Envelope',{inst:'B8',ins:[['gate','gate'],['retrig','gate']],outs:[['out','cv'],['eoc','gate']]});onStep.push(n=>{if(n%8===0)c.J.gate.pulse();});c.mid.append(adsrView('A'));st.append(c.el);});
@@ -995,12 +1002,26 @@ item(sec,'M9','Clock','Tempo is a large scrub number, the most exact control her
     bt.textContent=`bar ${Math.floor(n/16)+1} · ${Math.floor(i/4)+1}.${i%4+1}`;if(G.motion==='off')return;if(P.bpm.v<220)c.J['1/16'].pulse();if(i%4===0){c.J['1/4'].pulse();bd.getAnimations().forEach(a=>a.cancel());bd.animate([{transform:'scale(1.35)'},{transform:'scale(1)'}],{duration:220,easing:'cubic-bezier(.2,.8,.2,1)'});}if(i===0)c.J.bar.pulse();});
   c.mid.append(numBox(P.bpm,{big:true}),sv,h('div',{class:'row',style:'align-items:center'},toggle(P.run,{label:'run'}),slider(P.swing,{w:110})));st.append(c.el);});
 }
+
+{
+const sec=document.getElementById('modules').querySelector('.grid');const fakeSec={grid:sec};
+item(fakeSec,'M10','CC to CV · collapsed rail, typed CC numbers','A rail with more than 5 ports shows 4 (plus any connected) and a − n/N + control (Grasshopper-style). Click a CC label to type its number.',{},st=>{
+  const N=8;let shown=4;const cc=[1,2,3,4,5,6,7,8];let c=null;const host=h('div');
+  const build=()=>{c=card('CTC','CC to CV',{inst:'C9',ins:[['midi','ev']],outs:cc.slice(0,shown).map((n,i)=>['cc'+(i+1),'cv'])});
+    c.el.querySelectorAll('.cp.out .jk').forEach((j,i)=>{const sp=j.querySelector('span');sp.textContent='CC '+cc[i];sp.className='cc';sp.onclick=()=>{const inp=h('input',{type:'number',min:0,max:127,value:cc[i],style:'width:34px;font:500 8px var(--mono);border:0;border-bottom:1px solid var(--ink);background:none'});sp.replaceWith(inp);inp.focus();inp.select();const done=()=>{const n=Math.round(+inp.value);if(n>=0&&n<=127)cc[i]=n;build();};inp.onkeydown=e=>{if(e.key==='Enter')done();};inp.onblur=done;};});
+    const ctl=h('div',{class:'pctl'},h('button',{onclick:()=>{shown=Math.max(1,shown-1);build();}},'−'),h('span',null,shown+'/'+N),h('button',{onclick:()=>{shown=Math.min(N,shown+1);build();}},'+'));
+    c.el.querySelector('.cp.out').append(ctl);c.mid.append(h('div',{style:'width:120px;height:20px'}));host.replaceChildren(c.el);};
+  build();st.append(host);});
+item(fakeSec,'M11','Parameter nodes and mapping (app behaviour)','Essential modulatable parameters always have a rust node on the left rail (VCF: cutoff, res). Any other parameter gets a node the moment it is mapped. Map by dropping a cable on a knob or node, or right-click an output → <b>Map to a parameter…</b>, then click a highlighted knob. See DESIGN §7.',{},st=>{
+  const c=card('LFO','Motion',{inst:'47',ins:[['rate','param'],['depth','param'],['offset','param']],outs:[['control','cv']]});c.mid.append(row(knob(new Param({name:'Depth',def:.8,unit:'%'})).w,knob(new Param({name:'Offset',min:-1,max:1,def:.2,unit:'±%',bip:true,mods:[{src:'lfo2',amt:.2}]}),{tier:'S'}).w));
+  const note=h('div',{style:'font:9.5px/1.5 var(--mono);color:var(--graph);max-width:150px'},'OFFSET has a node only because LFO 2 is mapped to it.');st.append(c.el,note);});
+}
 /* ================= 05 motion ================= */
 {
 const sec=section('05','motion','Motion and cables',`<p>Signal motion runs every frame from one loop. Events get one-shot 150–400 ms animations on transform/opacity. Interaction motion answers the hand and never lags it. Cables carry no meaning in colour: a cable turns dotted while it carries signal, and its colour is the user's choice from the palette.</p>`,null);
 item(sec,'A1','Cables: dotted while active + user colour','Click a cable, then a swatch. Top: idle (solid). Bottom: active (dotted).',{wide:true},st=>{
   const W=420,H=120,sv=s('svg',{width:W,height:H,style:'overflow:visible'});let sel=null;
-  [['idle','solid'],['active','dots']].forEach(([t,m],i)=>{const y=30+i*55,d=`M40 ${y}C130 ${y+22},230 ${y+22},320 ${y}`;s('circle',{cx:40,cy:y,r:4,fill:C.card,stroke:C.ink,'stroke-width':1.2},sv);s('circle',{cx:320,cy:y,r:4,fill:C.card,stroke:C.ink,'stroke-width':1.2},sv);
+  [['idle','solid'],['active','dots']].forEach(([t,m],i)=>{const y=30+i*55,d=cablePath({x:40,y},{x:180,y:y+22},{x:320,y});s('circle',{cx:40,cy:y,r:4,fill:C.card,stroke:C.ink,'stroke-width':1.2},sv);s('circle',{cx:320,cy:y,r:4,fill:C.card,stroke:C.ink,'stroke-width':1.2},sv);
     const tt=s('text',{x:334,y:y+3,style:'font:9px var(--mono);fill:var(--mute)'},sv);tt.textContent=t;const hit=s('path',{d,fill:'none',stroke:'transparent','stroke-width':12,style:'cursor:pointer'},sv);const p=s('path',{d,fill:'none',stroke:C.ink,'stroke-width':1.6,'stroke-linecap':'round',class:'cb-'+m},sv);
     hit.addEventListener('click',()=>{if(sel)sel.style.strokeWidth='';sel=p;p.style.strokeWidth='2.6';});});
   st.append(h('div',{class:'col'},sv,h('div',{class:'row',style:'gap:6px;align-items:center'},lab('colour'),...CABLES.map(([n,c_])=>h('button',{class:'swt',title:n,style:`background:${c_}`,onclick:()=>{if(sel)sel.setAttribute('stroke',c_);}})))));});
@@ -1016,7 +1037,7 @@ item(sec,'A4','Cable physics on drag','The sag lags and settles with a damped sp
   const W=300,H=150,sv=s('svg',{width:W,height:H,style:'touch-action:none;border:.5px solid var(--hair);border-radius:14px'});const a={x:40,y:40},b={x:240,y:100};
   const path=s('path',{fill:'none',stroke:C.ink,'stroke-width':1.8,'stroke-linecap':'round'},sv);s('circle',{cx:a.x,cy:a.y,r:5,fill:C.card,stroke:C.ink,'stroke-width':1.3},sv);const pb=s('circle',{r:6,fill:C.card,stroke:C.ink,'stroke-width':1.3,style:'cursor:grab'},sv);
   let cp={x:140,y:120},v={x:0,y:0},dragging=false,r=null;const target=()=>{const len=Math.hypot(b.x-a.x,b.y-a.y);return{x:(a.x+b.x)/2,y:(a.y+b.y)/2+30+len*.18};};
-  const draw=()=>{path.setAttribute('d',`M${a.x} ${a.y}Q${cp.x.toFixed(1)} ${cp.y.toFixed(1)} ${b.x} ${b.y}`);pb.setAttribute('cx',b.x);pb.setAttribute('cy',b.y);};
+  const draw=()=>{path.setAttribute('d',cablePath(a,cp,b));pb.setAttribute('cx',b.x);pb.setAttribute('cy',b.y);};
   pb.addEventListener('pointerdown',e=>{pb.setPointerCapture(e.pointerId);dragging=true;r=sv.getBoundingClientRect();});pb.addEventListener('pointermove',e=>{if(!dragging)return;b.x=clamp(e.clientX-r.left,10,W-10);b.y=clamp(e.clientY-r.top,10,H-10);});pb.addEventListener('pointerup',()=>dragging=false);
   let lt=performance.now();addTick(sv,()=>{const now=performance.now(),dt=Math.min(.05,(now-lt)/1000);lt=now;const tg=target();v.x=(v.x+(tg.x-cp.x)*90*dt)*Math.pow(.02,dt);v.y=(v.y+(tg.y-cp.y)*90*dt)*Math.pow(.02,dt);if(dragging||Math.abs(v.x)+Math.abs(v.y)>.5||Math.abs(tg.y-cp.y)>.3){cp.x+=v.x*dt;cp.y+=v.y*dt;draw();}});draw();st.append(sv);});
 }
