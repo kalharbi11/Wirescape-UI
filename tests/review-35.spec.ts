@@ -97,16 +97,19 @@ test.describe('3.5 review', () => {
     expect(ui.portsShown['1'].output).toBe(5);
   });
 
-  test('cables leave and enter their nodes horizontally', async ({ page }) => {
+  test('cables leave and enter their nodes near level, as one smooth curve', async ({ page }) => {
     await boot(page);
     await load(page, [[1, 'essentials.vco', 600, 400], [2, 'essentials.vcf', 80, 60]],
       [{ kind: 'signal', from: { module: 1, port: 'audio' }, to: { module: 2, port: 'audio' } }]);
     const d = await page.locator('.cable').first().getAttribute('d');
     const n = d!.match(/-?\d+(\.\d+)?/g)!.map(Number);
-    // M ax,ay C c1x,c1y …  S c2x,c2y bx,by
-    expect(n[1]).toBeCloseTo(n[3]!, 1);          // first control point level with the output
-    expect(n[2]!).toBeGreaterThan(n[0]!);          // and to its right
-    expect(n[n.length - 3]).toBeCloseTo(n[n.length - 1]!, 1); // last control level with the input
-    expect(n[n.length - 4]!).toBeLessThan(n[n.length - 2]!);   // and to its left
+    // M ax,ay C c1x,c1y c2x,c2y bx,by — one smooth cubic, near level at both nodes.
+    expect(n).toHaveLength(8);
+    const [ax, ay, c1x, c1y, c2x, c2y, bx, by] = n as [number, number, number, number, number, number, number, number];
+    expect(c1x).toBeGreaterThan(ax);   // leaves the output to the right
+    expect(c2x).toBeLessThan(bx);      // enters the input from the left
+    const deg = (x: number, y: number) => Math.abs(Math.atan2(y, x) * 180 / Math.PI);
+    expect(deg(c1x - ax, c1y - ay)).toBeLessThan(42);
+    expect(deg(bx - c2x, by - c2y)).toBeLessThan(42);
   });
 });

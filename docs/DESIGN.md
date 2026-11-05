@@ -175,7 +175,7 @@ The stock set in the kit: VCF (hero-led), VCF multimode with the view switch, VC
 - Colour carries no meaning; the user picks it from the palette (§2).
 - **Idle:** solid 1.6 px. **Carrying signal:** dotted (round caps, dash 0.1/5, 2.4 px), static (OPEN-4). **Selected:** 2.6 px.
 - Drag: sag spring as above. Hit area 12 px.
-- **Horizontal lead at each node** (owner, 3.5 review). A cable leaves an output to the right and enters an input from the left before it bends: two cubic segments through the sag point with horizontal tangents at both ends, lead = clamp(0.3·|dx| + 0.12·|dy|, 36, 140) px. A cable that routes behind a card is still visibly attached at its node; a backward cable twists out and back.
+- **One smooth cubic, near level at each node** (owner, 3.5 review, revised). A cable leaves an output to the right and enters an input from the left, then bends in one curve: controls at `a + (L, s)` and `b − (L, −s)`, reach L = clamp(0.4·|dx| + 0.18·|dy| (+40 when backward), 28, 180) px, droop s from the sag spring, capped at 0.85·L so each end stays within ~40° of level. The end at a node stays visible even when the cable routes behind a card; no midpoint kink, no long rigid straight lead.
 
 ## 10. Contracts
 

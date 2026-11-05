@@ -92,3 +92,4 @@ Rejected outright (don't revive without asking): ghost needle, comet trail, hist
 | Too many nodes (CC to CV, MIDI to CV, Macro Osc) | rails with > 5 ports collapse to 4 + connected, with `− n/N +`; CC to CV labels take a typed CC number (needs an engine parameter, flagged) |
 | LFO: no vertical rust line | phase dot only, on the dot grid |
 | Revise the reskin's design | headers no longer repeat the code (`VCF Filter`); horizontal output meters with a dB scale; Clock leads with a large tempo number, duty + ticks/beat below; LFO controls regrouped (rate; depth · beats · offset; sync); CC to CV card height follows its collapsed rail |
+| Cable shape was inconsistent (hook in the middle, too straight at some ends) | one cubic per cable, near level at both nodes, droop capped by the reach; the owner approved the short loop into a gate and the curl into an input from below |

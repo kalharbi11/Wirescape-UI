@@ -214,25 +214,36 @@ function springStep(s: { cp: Point; v: Point }, tg: Point, dt: number, damp: num
 }
 
 /**
- * Horizontal lead at each end (DESIGN §9): a cable always leaves an output
- * to the right and enters an input from the left before it bends, so its
- * end stays visible at the node even when the rest routes behind a card.
+ * One cubic per cable (DESIGN §9). It leaves an output to the right and
+ * enters an input from the left, nearly level at both nodes, so the end at a
+ * node stays visible when the rest routes behind a card; the sag point `cp`
+ * (spring-driven) sets how far the curve droops. A single cubic has no
+ * midpoint kink, so near-vertical and backward cables bend smoothly instead
+ * of hooking past the node.
  */
-function lead(a: Point, b: Point): number {
-  return Math.min(140, Math.max(36, Math.abs(b.x - a.x) * 0.3 + Math.abs(b.y - a.y) * 0.12));
+function ctrl(a: Point, cp: Point, b: Point): [Point, Point] {
+  const dx = b.x - a.x, dy = Math.abs(b.y - a.y);
+  // Horizontal reach of each end: longer for backward cables, so they loop out and back.
+  const L = Math.min(180, Math.max(28, Math.abs(dx) * 0.4 + dy * 0.18 + (dx < 0 ? 40 : 0)));
+  const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+  // A cubic's midpoint moves 3/4 of its control offset; the droop stays under the reach,
+  // so the tangent at each node stays within ~40° of level.
+  const sy = Math.max(-0.85 * L, Math.min(0.85 * L, (cp.y - my) / 0.75));
+  const sx = (cp.x - mx) / 0.75;
+  return [{ x: a.x + L + sx, y: a.y + sy }, { x: b.x - L + sx, y: b.y + sy }];
 }
 
-/** Two cubic segments through the sag point `cp`, with horizontal tangents at both nodes. */
 const quad = (a: Point, cp: Point, b: Point) => {
-  const L = lead(a, b);
-  const tx = (b.x - a.x) / 4, ty = (b.y - a.y) / 4;
+  const [c1, c2] = ctrl(a, cp, b);
   const f = (n: number) => n.toFixed(1);
-  return `M${f(a.x)},${f(a.y)} C${f(a.x + L)},${f(a.y)} ${f(cp.x - tx)},${f(cp.y - ty)} ${f(cp.x)},${f(cp.y)}`
-    + ` S${f(b.x - L)},${f(b.y)} ${f(b.x)},${f(b.y)}`;
+  return `M${f(a.x)},${f(a.y)} C${f(c1.x)},${f(c1.y)} ${f(c2.x)},${f(c2.y)} ${f(b.x)},${f(b.y)}`;
 };
 
-/** The path passes through the sag point, so it is the cable's midpoint. */
-const midQ = (_a: Point, cp: Point, _b: Point): Point => ({ x: cp.x, y: cp.y });
+/** The point halfway along the curve (selected-cable tools, feedback mark). */
+const midQ = (a: Point, cp: Point, b: Point): Point => {
+  const [c1, c2] = ctrl(a, cp, b);
+  return { x: (a.x + 3 * c1.x + 3 * c2.x + b.x) / 8, y: (a.y + 3 * c1.y + 3 * c2.y + b.y) / 8 };
+};
 
 /** Kept for callers that need a resting path between two points. */
 export function route(a: Point, b: Point): string { return quad(a, sagPoint(a, b), b); }
