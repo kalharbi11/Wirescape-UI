@@ -1,20 +1,14 @@
 name: Pi UI checks
 on:
   workflow_dispatch:
-  pull_request:
 permissions:
   contents: read
 jobs:
   pi-ui:
-    # Bootstrap the owner's current reviewed stack; thereafter use Run workflow.
-    # Never run fork PRs or arbitrary PR branches on the physical runner.
+    # Paused: no automatic PR/push runs. Owner manually resumes on main.
     if: >-
-      (github.event_name == 'workflow_dispatch' &&
-       github.actor == github.repository_owner && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'pull_request' &&
-       github.event.pull_request.head.repo.full_name == github.repository &&
-       github.actor == github.repository_owner &&
-       github.head_ref == 'phase/6-signature-polish')
+      github.event_name == 'workflow_dispatch' &&
+      github.actor == github.repository_owner && github.ref == 'refs/heads/main'
     runs-on: [self-hosted, Linux, ARM64, pi, ui, pi5]
     timeout-minutes: 20
     concurrency:

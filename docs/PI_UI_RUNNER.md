@@ -5,9 +5,11 @@ The `pi-ui` job in Pi UI checks runs the browser suite with system Chromium **he
 then records the 20-module/40-cable fixture at fit and 100% in Normal and Pi profiles.
 No audio engine, real MIDI/OSC, SSH, sudo or system-package installation is involved.
 
-The owner-approved `phase/6-signature-polish` PR bootstraps the first run. Fork PRs and
-other PR branches do not target the physical runner. Once the workflow is on the
-repository default branch, use Actions → Pi UI checks → Run workflow as the repository owner on `main`. Other actors/refs are skipped.
+Pi testing is paused at the owner's request. There are no automatic PR/push
+triggers. After this workflow reaches the default branch and the owner reconnects
+the monitor, resume with Actions → Pi UI checks → Run workflow as the repository
+owner on `main`. Other actors/refs are skipped. Already-dispatched runs must be
+cancelled separately in Actions; changing triggers does not cancel them.
 The job uses read-only repository permissions and does not persist checkout credentials.
 
 ## Desktop prerequisites
