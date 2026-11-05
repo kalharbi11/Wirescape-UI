@@ -136,3 +136,9 @@ Owner authorization: assume phase 3.5 approved, preserve its design language, fi
 ## Revision before phase 7
 
 Fix reproduced history gesture boundaries, stuck keyboard note releases after octave changes, modal focus/background shortcuts, sparse effective-value retention and fader live-marker reset. Preserve the approved design and synchronous prototype engine contract. The real engine adapter must supply native graph metadata/output buses and define asynchronous rejection handling; these are integration work, not visual redesign. Keep actual Pi display benchmarking separate from hosted headless evidence.
+
+## Roadmap renumbering — 2026-11-05
+
+The owner authorized **Phase 7** as a separate Raspberry Pi *UI-only* pretest in Wirescape-UI, using the dedicated self-hosted `pi-ui` runner, headed Chromium and `FakeEngine`. **Phase 8** is the real native engine integration primarily in `kalharbi11/wirescape` ([PHASE8_HANDOFF.md](PHASE8_HANDOFF.md)).
+
+This does not reopen the approved design system. No Pi run was started, no native code was changed, and performance OPEN-5 remains unmeasured on physical hardware. Q-B (ordinary-drop replace vs Shift-add, while the plan favors sum/add), touch access, physical readability and signature panels are Phase 7 owner acceptance items. Preserve previous rejected designs unless a specific Pi UI defect warrants revisiting them.
