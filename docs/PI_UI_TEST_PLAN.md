@@ -1,89 +1,52 @@
-# Pi UI test plan: phases 3.5–6
+# Phase 7 — Raspberry Pi UI pretest runbook
 
-**Before Pi execution:** read the [phases 3.5–6 pre-Pi readiness review](PRE_PI_READINESS_REVIEW.md) for required merge/runner gates, measurement revisions, and owner UX acceptance notes. It is a review checklist, not a recorded Pi pass.
+**Purpose:** certify and fix UI/browser defects from Phases 3.5–6 **before** Phase 8 native-engine integration. Dedicated `pi-ui` runner + real Raspberry Pi monitor + **headed system Chromium**; `FakeEngine` supplies simulated values. No native bridge, DSP/audio, real MIDI/OSC, or user device access is necessary.
 
-Prepared while the owner is commuting; no Pi access or test execution requested now.
-Hardware confirmed by owner: Pi 5B rev1.0, BCM2712, 8GB, MicroSD; externally powered
-14-inch 16:9 monitor described as 2K. Measure negotiated resolution and scaling;
-do not assume that description means a specific pixel size.
+**Status:** plan and runner configuration exist, but **no completed physical Pi acceptance result is claimed**. See [PLAN.md](PLAN.md), [PI_UI_RUNNER.md](PI_UI_RUNNER.md) and the [pre-Pi review](PRE_PI_READINESS_REVIEW.md). This runbook replaces the former pre-Phase-7 plan.
 
-## Quick audit of the main repository
+## A. Before the first accepted hardware run
 
-Read-only reference: `kalharbi11/wirescape` local snapshot
-`6e3c253550428f2bb964af4434bd429b5284cce2`. Recheck newer instructions before phase7.
+- [ ] **Merge consistency:** PR #3 was merged into `main`. PRs #4–6 were merged into **intermediate phase branches**, so first bring the cumulative through-Phase-6 code to `main`. Also merge Phase 7's test-harness updates. Verify hosted build/typecheck/Playwright green for the **exact final main SHA**.
+- [ ] **Runner connected:** `pi-ui` online, labels `self-hosted`, `Linux`, `ARM64`, `pi`, `ui`, `pi5`; system Chromium installed. The prior [run 42106052630](https://github.com/kalharbi11/Wirescape-UI/actions/runs/42106052630) was cancelled after assignment with **zero setup steps**; inspect runner service/worker diagnostics if that repeats. It is **not** an application test failure.
+- [ ] **Real desktop available:** owner connects monitor, logs in, confirms actual resolution/scale/refresh; runner user inherits `DISPLAY` (X11/XWayland) or `WAYLAND_DISPLAY` + `XDG_RUNTIME_DIR` (Wayland). Do not substitute Xvfb, grant broad display access or call a headless run hardware-verified.
+- [ ] **Avoid contention:** do not run native repo builds/soaks on the same Pi during baseline; separate repo concurrency groups do not serialize work across repositories. No agent needs to SSH, start a native private bridge, change autologin or touch real audio/MIDI devices.
+- [ ] **Evidence:** ensure runner has permission for Actions uploads, can create `test-results/` and `build_reports/pi-ui/`, and failed jobs retain artifacts/traces.
 
-| Existing resource | Reuse for this UI test | Keep separate |
-|---|---|---|
-| `docs/PI_RUNNER.md` | Exact source SHA, uploaded evidence, unavailable stages never reported green, no duplicate evidence runs | Main repo uses private `wirescape-pi` bridge; do not retarget its native workflows to the public UI runner |
-| `tools/runner_health.py` | Collect load, available RAM/swap, disk space, temperature, throttling and power observations before/after measurements | No need to copy its network/service checks or install another daemon |
-| `tools/pi_ui_probe.py` and its tests | Bounded execution, dedicated output directory, structured stage/error report, preserve useful failure tails | This builds Qt and runs offscreen/software-rendered tests; it cannot replace headed Chromium measurements |
-| `docs/PI_KIOSK.md`, `tools/pi/wirescape-kiosk.desktop` | Logged-in graphical session and persistent launchers outside disposable runner workspaces | Do not install the native Qt launcher, change autologin or configure kiosk services for this test |
-| Native loader soaks / benchmark baseline | Keep exact-head evidence and distinguish device-free tests from real sound | C++/DSP hashes, Qt UI tests, native benchmark units and audio buffer sweeps are phase7 evidence, not browser FPS baselines |
+Owner's previously recorded target: Pi 5B rev1.0 / BCM2712 / 8 GB RAM / MicroSD, externally powered 14-inch 16:9 “2K” display. **Measure** pixel dimensions and DPR; do not guess from the marketing description.
 
-The main repo's long-running private poll/soak and this repo's runner may share
-one Pi. GitHub concurrency groups do not serialize jobs across repositories.
-The operator should ensure native builds/soaks are idle during the UI baseline;
-no agent will disable or reconfigure the private bridge. Phase7 deliberately
-adds real-engine contention later. Keep physical audio/MIDI devices unopened.
+## B. Phase 7 test-harness revisions (from 3.5–6 audit)
 
-## Once the monitor and Pi are connected
+These are **tasks to implement on the Phase 7 branch before formal benchmarking**, not claims that existing tests have already been modified.
 
-1. Log into the desktop and verify the actual resolution, scale and refresh rate.
-   Let the Pi settle; avoid concurrent native builds/soaks. No SSH from this agent.
-2. Confirm runner `pi-ui` is online with all six documented labels. If GitHub
-   assigns a job but reports zero setup steps, inspect the runner service/worker
-   log first: that is not a browser failure. Two runner services should have
-   separate installation/work directories; check rather than reinstalling them.
-3. Ensure the runner user can access the existing X11/XWayland or Wayland desktop.
-   Use the variables in PI_UI_RUNNER.md when a service does not inherit the
-   session. Do not substitute Xvfb or grant broad display access to make it pass.
-4. Resume the owner-only manual workflow on `main` once PR6 is merged. Pending
-   earlier runs are not evidence; inspect/cancel duplicates before starting one.
-   Autorun is acceptable to the owner, but is not required: current configuration
-   remains manual so it cannot accidentally exercise an unavailable desktop.
-   If enabling autorun later, retain owner/trusted-ref checks and one hardware job
-   at a time; an offline queue is not a failure or a completed test.
-5. The job checks ARM64, records OS/model/RAM/browser and desktop selection,
-   installs locked Node dependencies plus the ffmpeg helper, builds/typechecks,
-   and runs the browser regression suite using system Chromium. No sudo,
-   system-package installation, native engine or real device access is required.
+- [ ] **Long-duration timing:** `tests/review-artifacts.spec.ts` currently measures only 120 rAF intervals after ~30 settle frames per profile/zoom condition. For the Pi run, use a recorded warm-up and **15–30 seconds of sample time per condition**, with average rAF FPS, p95/p99 interval, long-frame counts (including >33.3ms and >50ms diagnostics), focus/visibility, telemetry apply cost and exact sample duration. Keep short hosted samples for fast CI if desired. Adjust the existing Pi test's 180-second timeout and runner job timeout if necessary.
+- [ ] **Realistic signals:** retain the 20-module/40-cable **10 LFO + 10 VCF** modulation-heavy fixture; it contains **no oscillator/Output** and cannot verify Mixer/Output scope or meter activity. Add a second deterministic **signal-bearing UI fixture** such as the built-in Two-source drone (VCO + Noise → Mixer → Ladder → Output, LFO cutoff modulation, FakeEngine held note) and assert meter/scope/signal-activity visual updates, without claiming audio.
+- [ ] **Profile behavior:** Normal/Pi × fit/100% at the real monitor's viewport, plus a **separate** 5-second under-40-FPS automatic Pi-profile watchdog test, its one-shot behavior and user opt-out. Stress setup currently forces `autoProfile: false`; it does not test this automatically.
+- [ ] **Environment capture:** log system Chromium version, renderer/backend (including software vs GPU if evident), OS/model/RAM, viewport/screen/DPR/refresh, current focus and page visibility; gather read-only load/free memory/disk/temperature/throttling pre/post when tools exist. Missing values are “unavailable,” never 0. Historical throttle flags alone do not imply an active power failure.
+- [ ] **Predetermined acceptance criteria:** physical target ≥30 measured UI FPS across the defined profiles/fixtures; inspect p95/p99 and long-frame/stutter rates, not average alone. Define a documented acceptable pacing threshold **before** final sign-off. The Pi profile's 30Hz telemetry/drawing cap is not the same quantity as displayed rAF FPS.
 
-## Automated acceptance and evidence
+## C. Execute on the dedicated Pi UI runner
 
-- All existing regression tests: all21 modules, patching at50/100/185% zoom,
-  undo/redo, autosave, unknown-field preservation, system fault handling, keyboard
-  and dialog fixes, all12 starter layouts at mouse/touch density.
-- Headed screenshots and a recording of Sequencer, Macro and Mixer/Output.
-- Stress patch:20 modules,40 cables, moving modulation and a held fake-engine note.
-  Measure Normal/Pi profiles at fit and100%; use native, un-emulated desktop
-  dimensions and record viewport, screen, DPR and GPU/renderer information.
-- Each frame sample records measured rAF FPS, p95 interval, smoothed telemetry
-  application cost, focus/visibility and fixture counts. Pi profile drawing is
-  capped at30Hz independently of loop FPS. Target at least30FPS; inspect interval
-  variability as well as the average. Headless/cloud results cannot close OPEN-5.
-- Collect read-only load/memory/disk/temperature/throttling observations alongside
-  the artifact if performance is poor; missing optional tools are unavailable,
-  not zero. Never infer a power fault solely from a historical throttling bit.
+1. Merge accepted Phase 7 test changes to `main`. Owner goes to **Actions → Pi UI checks → Run workflow** and selects `main`. The workflow is deliberately **manual, owner-only, main-only**; keep it that way unless the owner requests a separately reviewed change. Do not run or restart the hardware service from this planning task.
+2. Verify preflight actually executed on ARM64, identified system Chromium, captured the exact checkout SHA and connected to the existing headed desktop. If assigned but no steps run, diagnose runner/service first.
+3. Execute all existing Playwright UI suites: 21 catalogue modules, 50/100/185% patching, cable/parameter modulation gestures, undo/redo/copy/paste/typed values, autosave/reload/unknown-field preservation, keyboard/octave/modal focus, fake audio/MIDI/OSC faults and panic, 12 starter layouts at mouse and touch-profile density.
+4. Capture headed screenshots and short video of Step Sequencer, Macro Oscillator, Mixer and Output. Inspect visible module/port geometry and console/page errors.
+5. Run sustained stress and signal-bearing UI samples at Normal/Pi and fit/100%; verify focus/visibility and exact fixture counts. Report rAF FPS, interval distributions, telemetry application cost, frame stalls, renderer/backend and hardware load/temperature context.
+6. Review failures independently: headless fallback/desktop or renderer missing, wrong revision, service stall or runner offline are **environment blocked**; product crashes/clipped cards/slow frames on valid display are **UI issues**.
 
-Download `pi-ui-<SHA>`: preflight report, JSON test/frame/GPU evidence, screenshots,
-video and any failure traces. Record the exact tested revision, OS/Chromium,
-resolution/DPR, power/thermal/load context, both profile/zoom results and run link
-in PERFORMANCE.md; summarize in DESIGN.md before closing OPEN-5. Do not commit
-binary artifacts. Missing desktop, wrong revision, background/focus loss or an
-unrun stage stays explicitly blocked; do not weaken checks to call it passed.
+## D. Manual owner screen check (not replaceable by CI alone)
 
-## Short owner check on the display
+- [ ] Create a voice by hand and move/add/remove modules; plug/unplug and remap cables, select cables, edit colour and modulation amount; try stereo connections.
+- [ ] Edit hero/trim knobs, numbers, faders and typed values; check precision keys and readout clarity; test undo/redo to empty/back, copy/paste, save/open and recovery.
+- [ ] Check keyboard note-off after octave switch; background shortcuts while modal open; Tab focus trapping/restoration; panic and device lost/recovery **simulations**.
+- [ ] At the actual display scale, inspect all 12 starters, Sequencer's wide grid and Tie bars, Macro's 24-model bank, Mixer A/B meters, Output L/R meter/scope, rail ports and labels. Repeat representative actions at 50/100/185% zoom and both mouse/touch **layout profiles**.
+- [ ] **Q-B:** normal signal-drop **replaces** and Shift-drop **adds** today; PLAN default proposes sum/add. Owner chooses intended behavior; provide a usable touch alternative if multiple input cables are needed without Shift. Regress save/load, undo and stereo/multiple connections after any UI change.
+- [ ] “Touch profile geometry tested” is not a claim that actual multitouch/pinch worked. Only claim physical touch after testing on a real touchscreen.
+- [ ] Rest/Note/Tie UI should be visually correct; FakeEngine currently treats Tie as gate-on in a simple simulation. If meaningful musical tie behavior is required in this walkthrough, add explicit fake-state tests or label as an engine semantic limitation; real behavior belongs to Phase 8.
 
-Build a voice by hand; drag a module/cable, adjust a knob and fader, type a value,
-map/unmap modulation, select a cable, undo/redo, save/reload and try a starter.
-Check readable labels/hit targets at the monitor's actual scale. Exercise the
-touch profile only as a layout/hit-area check unless a touchscreen is confirmed;
-headless mouse automation does not prove physical touch operation.
+## E. Record evidence and decide Phase 7 completion
 
-## Phase7 boundary
+Download `pi-ui-<SHA>` with preflight, Playwright JSON/frame report, GPU/display evidence, screenshots/recordings and failure traces. Document in [PERFORMANCE.md](PERFORMANCE.md): exact tested SHA, Pi model/OS, system Chromium and renderer, resolution/DPR/refresh, Normal/Pi × fit/100%, **both** workload definitions, duration, mean FPS/p95/p99/stalls, telemetry apply cost, focus/visibility, read-only thermal/load context and Actions run URL. Log design/UX choices in [DECISIONS.md](DECISIONS.md) and [DESIGN.md](DESIGN.md).
 
-A passing result closes the browser/Pi baseline only. Follow PHASE7_HANDOFF.md
-for the native patch codec, asynchronous acknowledgements/refusals and render-safe
-telemetry. Then repeat the same visual fixture with the real host and actual
-audio contention, measuring dropouts/latency through the main repo's approved
-user/device-confirmation workflow. No audible test is part of this UI plan.
+Classify every stage as **PASS**, **UI ISSUE**, **RUNNER/DISPLAY BLOCKED**, or **NOT RUN / PHASE 8 DEPENDENCY**; never count missing evidence as green. Fix UI-only defects on Phase 7 with regression tests, then rerun hosted + physical acceptance on a final merged revision. **OPEN-5 remains open** until genuine physical results are reviewed.
+
+**Phase boundary:** a passing Phase 7 result certifies only the browser/Pi interface and FakeEngine visual path. The native v2 codec, async engine refusals, render-safe real telemetry, real audio/MIDI/OSC, DSP parity, audio dropouts/latency, native CPU contention, packaging and migration are Phase 8 ([native handoff](PHASE8_HANDOFF.md)).
