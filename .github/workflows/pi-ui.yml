@@ -21,6 +21,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - name: Capture host health before setup and browser session
+        run: bash tools/pi-ui-health.sh before
       - name: Check physical runner and desktop
         env:
           PI_UI_DISPLAY: ${{ vars.PI_UI_DISPLAY }}
@@ -36,6 +38,9 @@ jobs:
       - run: npx playwright install ffmpeg
       - name: Headed Chromium regression and performance session
         run: npm test -- --max-failures=5
+      - name: Capture host health after browser session
+        if: always()
+        run: bash tools/pi-ui-health.sh after
       - name: Upload Pi evidence
         if: always()
         uses: actions/upload-artifact@v4

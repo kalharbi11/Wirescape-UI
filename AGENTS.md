@@ -3,7 +3,11 @@
 Wirescape is a browser-based modular synth UI that targets a Raspberry Pi (Chromium) first and the laptop second. This repo holds the **design system and a working reference implementation** of its interface. The prototype brief (the app structure, fake engine, patch format, feature list) lives in the Claude Docs artifact "Wirescape UI prototype brief": https://claude.ai/artifact/XYQYjdRGwLHrUswEeSn5jx
 
 ## Status and plan
-**Read [`docs/PLAN.md`](docs/PLAN.md) first.** Phases 1–3 are built and phase 3.5 (merge and reskin to this design system) is done on branch `phase/3.5-reskin`, which goes to `main`. The app (Vite + TypeScript) now lives in this repo. Phase 3.5 is approved for the current continuation. Phases 4–6 are implemented on stacked branches; actual Pi measurement remains open. See DESIGN §18 for signature panels and system audit fixes; the real engine (phase 7) lives in `kalharbi11/wirescape`.
+
+**Read [docs/PLAN.md](docs/PLAN.md) first.** Phase 3.5 merged to `main`; implemented phases 4–6 were merged via stacked PRs into intermediate phase branches, with their cumulative result on `phase/5-system`. `main` still needs that cumulative integration. A separate `phase/7-pi-validation` branch starts from the cumulative Phase 6 merge.
+
+**Next: Phase 7 — dedicated Pi UI-only pretest** in this repository with headed system Chromium, its own `pi-ui` runner and `FakeEngine`. See [Phase 7 test plan](docs/PI_UI_TEST_PLAN.md) and [runner instructions](docs/PI_UI_RUNNER.md). It is not native sound testing. **Phase 8 — real-engine integration** is in `kalharbi11/wirescape`; see [native handoff](docs/PHASE8_HANDOFF.md). Merge the cumulative UI and test harness into `main` before an accepted hardware run. Hardware OPEN-5 remains open until physical measurements exist.
+
 
 ## Read in this order
 

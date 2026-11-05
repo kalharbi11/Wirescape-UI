@@ -413,7 +413,7 @@ Six original Qt starters from `kalharbi11/wirescape` PR #192, source `96cad1cd7e
 
 Phase-5 follow-up: audio settings tolerate zero devices, hide unsupported optional setters, refresh sample-rate choices when devices change, and call `setBufferFrames` through the engine contract. Closing Settings releases the OSC listener. An unsaved motion preference honors the OS reduced-motion setting.
 
-Pi checkpoint B / OPEN-5 remains **unmeasured on hardware**. Cloud browser and source validation are not Pi measurements. The real-engine work remains phase 7.
+Pi checkpoint B / OPEN-5 remains **unmeasured on hardware**. Cloud browser and source validation are not Pi measurements. The real-engine work is now Phase 8. Phase 7 is the Pi UI-only pretest.
 
 Phase-6 cloud frame samples (20 modules / 40 cables) and the recording procedure are in PERFORMANCE.md. The drone and Macro starter LFOs are moved below the Ladder and expanded touch Macro panels so controls remain clear. Every bundled starter is checked for card overlap at mouse and touch density.
 
@@ -423,4 +423,12 @@ Keyboard note releases remember their original pitch across octave changes. Moda
 
 The ticker accumulates sparse `effective` parameter deltas until replaced or deleted, including updates received while off screen or between draws. A density rebuild preserves this state; graph load/undo starts a fresh telemetry epoch. Other telemetry fields remain packet snapshots. Faders only draw a rust live marker when the effective value differs from the base and clear it when values agree.
 
-See PHASE7_HANDOFF.md for native schema and asynchronous refusal gaps. Phase 7 must adapt these explicitly rather than assuming the prototype file is already a runnable native graph.
+See [PHASE8_HANDOFF.md](PHASE8_HANDOFF.md) for native schema and asynchronous refusal gaps. Phase 8 must adapt these explicitly rather than assuming the prototype file is already a runnable native graph.
+
+## 20. Phase 7 — physical Pi UI-only pretest (planned)
+
+Phase 7 checks the current interface with `FakeEngine` on real Raspberry Pi hardware, using the separate `pi-ui` runner and **headed system Chromium**. Test browser rendering, real monitor size/scaling, keyboard/mouse/touch-*profile* geometry, cables/controls, editing/recovery, large signature panels and simulated system faults. Include sustained modulation-heavy and signal-bearing FakeEngine workloads. Execution and acceptance gates: [PI_UI_TEST_PLAN.md](PI_UI_TEST_PLAN.md).
+
+**OPEN-5 remains unresolved:** the physical run must capture exact tested revision, renderer, resolution/DPR, normal/Pi × fit/100% results, ≥30 actual rAF FPS with acceptable pacing and resource/thermal context in [PERFORMANCE.md](PERFORMANCE.md). Cloud FPS or 30Hz ticker frequency do not count as Pi hardware evidence.
+
+Only UI/browser issues are fixed here. Native patch codec and output routing, real-host acknowledgements, genuine telemetry, actual sound/MIDI/OSC, DSP correctness, audio latency, and engine contention are **Phase 8**, documented in [PHASE8_HANDOFF.md](PHASE8_HANDOFF.md).

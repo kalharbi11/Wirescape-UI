@@ -1,16 +1,18 @@
-# Pre-Pi readiness review — phases 3.5–6
+# Historical pre-Pi review — phases 3.5–6
 
-**Reviewed:** 2026-11-05  
+**Reviewed:** 2026-11-05
+
+**Subsequent roadmap update:** the owner made **Phase 7** the dedicated Pi **UI-only** pretest and moved real-engine integration to **Phase 8**. This is a historical static review of the cited Phase 6 revision, not live branch or runner status. PRs #4–6 were subsequently merged into their **intermediate phase bases**, not directly to `main`. Use [PLAN.md](PLAN.md) for current merge prerequisites and [PI_UI_TEST_PLAN.md](PI_UI_TEST_PLAN.md) for the actionable Phase 7 checklist.  
 **Revision reviewed:** `phase/6-signature-polish` at `e0e5ef1f1fff7ed56b45d154c3f259a23bfb83f1` (stacked PR [#6](https://github.com/kalharbi11/Wirescape-UI/pull/6)).  
 **Scope:** Static review of the phase plans, source, Playwright coverage, runner workflow and published CI/run state. **No Raspberry Pi or local interactive test was executed in this review.** The last reviewed head's hosted `browser` check succeeded; this is not hardware sign-off.
 
-**Recommendation:** Preserve the implemented phase 3.5–6 design and keep Phase 7 out of this acceptance test. The browser app is a reasonable Pi-test candidate **after P0 prerequisites**; address the **P1 measurement gaps before declaring OPEN-5 passed**, and settle the owner UX questions during Pi acceptance. Items below are review notes/revision recommendations, not a claim that the existing 79 hosted browser tests failed.
+**Recommendation:** Preserve the implemented phase 3.5–6 design and keep the native engine (now Phase 8) out of this UI acceptance test. The browser app is a reasonable Pi-test candidate **after P0 prerequisites**; address the **P1 measurement gaps before declaring OPEN-5 passed**, and settle the owner UX questions during Pi acceptance. Items below are review notes/revision recommendations, not a claim that the existing 79 hosted browser tests failed.
 
 ## P0 — prerequisites before running the physical Pi job
 
 ### 1. Merge and test the exact revision that will run (phases 3.5–6)
 
-- The phase stack is open: [#3](https://github.com/kalharbi11/Wirescape-UI/pull/3) → [#4](https://github.com/kalharbi11/Wirescape-UI/pull/4) → [#5](https://github.com/kalharbi11/Wirescape-UI/pull/5) → [#6](https://github.com/kalharbi11/Wirescape-UI/pull/6). `main` still holds the design-kit/planning state, not this phase-6 application.
+- At the time of review the phase stack was open: [#3](https://github.com/kalharbi11/Wirescape-UI/pull/3) → [#4](https://github.com/kalharbi11/Wirescape-UI/pull/4) → [#5](https://github.com/kalharbi11/Wirescape-UI/pull/5) → [#6](https://github.com/kalharbi11/Wirescape-UI/pull/6). At review time `main` still held the design kit; **current follow-up**: PR #3 merged into main and the others merged into intermediate bases. Bring cumulative implementation to main before formal acceptance.
 - [`.github/workflows/pi-ui.yml`](../.github/workflows/pi-ui.yml) is intentionally **manual, owner-only, and `main`-only**. It cannot produce an accepted run on the unmerged phase branch without changing that policy. Do not bypass the guard to create a premature green result.
 - **Action:** Owner reviews/merges in order, resolves any retarget/conflicts, confirms hosted build/typecheck/Playwright on the **final merged SHA**, then manually dispatches the Pi workflow when the physical setup is available. Record that same exact SHA in the evidence.
 
@@ -63,7 +65,7 @@
 
 ### 9. Do not expand the Pi UI gate into native-engine acceptance
 
-- [PHASE7_HANDOFF.md](PHASE7_HANDOFF.md) already records the native v2 codec/output-routing, async acknowledgement/refusal, telemetry snapshot and CC-mapping integration gaps. These are real handoff tasks, but **not a reason to fail the current fake-engine Pi Chromium UI baseline**. No native sound, real MIDI/OSC, audio dropouts or realtime host validation is claimed.
+- [PHASE8_HANDOFF.md](PHASE8_HANDOFF.md) already records the native v2 codec/output-routing, async acknowledgement/refusal, telemetry snapshot and CC-mapping integration gaps. These are real handoff tasks, but **not a reason to fail the current fake-engine Pi Chromium UI baseline**. No native sound, real MIDI/OSC, audio dropouts or realtime host validation is claimed.
 
 ## Suggested sign-off record
 
