@@ -48,6 +48,8 @@ Open it on the laptop **and on the Pi in Chromium**. Patch a synth by hand, then
 below in `DECISIONS.md` or the PR. This is the "more UI testing" step. Do it here, not later.
 
 ### Phase 4: editing
+**Status (branch `phase/4-editing`, stacked on 3.5):** done: undo/redo to an empty canvas and back, copy/cut/paste/duplicate (also between patches), typed values everywhere (OPEN-8), with 8 tests in `tests/editing.spec.ts` (rapid undo, paste across zoom, reload mid-drag). Already in place from phases 1-3: multi-select (box + shift), select-all, save/open, autosave + restore on launch, six starter patches. **Not done:** porting the six starters from the Qt repo (#187), because that repo could not be attached to this session; the six built-in starters stay until it is.
+
 Undo/redo (to an empty canvas and back), copy/paste, multi-select (box and shift), save/load, starter
 patches (port the six from the Qt repo, #187), autosave and recovery, typed value entry (OPEN-8).
 Tests: break it on purpose (rapid undo, paste across zoom, reload mid-drag).
