@@ -9,7 +9,7 @@ three contracts stable so the real engine can plug in.
 |---|---|---|
 | Phases 1–3 app (Vite + TypeScript, fake engine, 21 modules from data, every cable gesture, live values), reskinned to the design system (**phase 3.5, done**) | `main` once branch `phase/3.5-reskin` merges: `src/`, `tests/`, `public/`, `index.html`, `reference/`; 23 session + 12 kit-control Playwright tests | in the new look; the old look survives only on branch `claude/new-session-p817y1` |
 | Design system (control-jam rounds 1–2) | `main`: `docs/DESIGN.md`, `ui/wirescape-ui-kit.html`, `ui/tokens.css`, `docs/DECISIONS.md` | decided and now implemented in `src/`; the kit stays the reference |
-| Brief (phases, contracts, fake engine, Pi rules, done checklist) | branch: `reference/Wirescape_UI_prototype_brief.md`; Claude Doc linked in AGENTS.md | phases 4–6 not started |
+| Brief (phases, contracts, fake engine, Pi rules, done checklist) | branch: `reference/Wirescape_UI_prototype_brief.md`; Claude Doc linked in AGENTS.md | phases 4–5 implemented on stacked branches; phase 6 continuation implemented |
 | Engine, modules, patch v2, MIDI, Pi runner | `kalharbi11/wirescape` (paused) | Qt UI frozen; becomes the real engine behind `EngineClient` |
 
 ## The contracts (never break them)
@@ -43,12 +43,12 @@ Bring the phase 1–3 app onto `main` and dress it in the new design system.
   - `loop ms/frame` with 20 modules and 40 cables is at or below the branch's figure
   - the PR shows before/after screenshots
 
-### Owner checkpoint A (next, after 3.5, about 30 minutes)
+### Owner checkpoint A (phase 3.5 approved for this continuation)
 Open it on the laptop **and on the Pi in Chromium**. Patch a synth by hand, then answer the open items
 below in `DECISIONS.md` or the PR. This is the "more UI testing" step. Do it here, not later.
 
 ### Phase 4: editing
-**Status (branch `phase/4-editing`, stacked on 3.5):** done: undo/redo to an empty canvas and back, copy/cut/paste/duplicate (also between patches), typed values everywhere (OPEN-8), with 8 tests in `tests/editing.spec.ts` (rapid undo, paste across zoom, reload mid-drag). Already in place from phases 1-3: multi-select (box + shift), select-all, save/open, autosave + restore on launch, six starter patches. **Not done:** porting the six starters from the Qt repo (#187), because that repo could not be attached to this session; the six built-in starters stay until it is.
+**Status (branch `phase/4-editing`, stacked on 3.5):** done: undo/redo to an empty canvas and back, copy/cut/paste/duplicate (also between patches), typed values everywhere (OPEN-8), with 8 tests in `tests/editing.spec.ts` (rapid undo, paste across zoom, reload mid-drag). Already in place from phases 1-3: multi-select (box + shift), select-all, save/open, autosave + restore on launch, six starter patches. **Follow-up completed:** six Qt starter fixtures (#187 / PR #192) are now bundled alongside the existing six browser demos, preserving native metadata and reskinning positions.
 
 Undo/redo (to an empty canvas and back), copy/paste, multi-select (box and shift), save/load, starter
 patches (port the six from the Qt repo, #187), autosave and recovery, typed value entry (OPEN-8).
@@ -61,6 +61,8 @@ Audio, MIDI and OSC status and settings (fake), CPU, panic, preferences, the Pi 
 **Owner checkpoint B:** record the Pi FPS figures in `DESIGN.md` (OPEN-5).
 
 ### Phase 6: signature panels and polish (CHAOS-lite deferred, owner's call)
+**Implementation complete on the continuation branch:** editable Step Sequencer with tie bars, Macro model bank and grouped controls, Mixer channel faders/meters, Output display sizing (`panels/<id>.json` plus small widgets). See DESIGN §18.
+
 Step Sequencer, Macro Oscillator, Mixer/Output custom panels (`panels/<id>.json` plus small widgets),
 a polish pass, and the full done checklist from the brief. CHAOS-lite keeps the generic panel for now.
 
@@ -86,3 +88,4 @@ a polish pass, and the full done checklist from the brief. CHAOS-lite keeps the 
 - A phase is a branch `phase/<n>-<slug>` with a PR to `main`; the owner merges after a look.
 - Big inventions (new panel type, new gesture): propose in one sentence or a quick mock first.
 - Follow `docs/PERFORMANCE.md`; check `loop ms/frame` after every change.
+

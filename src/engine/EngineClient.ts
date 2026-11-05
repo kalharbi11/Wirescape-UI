@@ -53,7 +53,7 @@ export interface OscStatus {
   recent: { time: number; address: string; args: (number | string)[] }[];
 }
 
-/** Live values, pushed ~30x a second. Only what changed is included. */
+/** Live values, pushed ~30x a second. Effective parameters are deltas; other fields are snapshots. */
 export interface Telemetry {
   /** Monotonic tick counter. */
   tick: number;
@@ -68,7 +68,8 @@ export interface Telemetry {
   phase: Record<number, number>;
   /** Envelope position 0..1 per module (the loudest live voice). */
   envelope: Record<number, number>;
-  /** Output meters per module: [left, right] 0..1+ (above 1 = clipping). */
+  /** Panel-labelled meters per module: Output [left, right], Mixer [A, B].
+   * Linear levels 0..1+ (above 1 = clipping). */
   meters: Record<number, [number, number]>;
   /** A short scope buffer per module, -1..1. */
   scope: Record<number, Float32Array>;
@@ -127,3 +128,4 @@ export interface EngineClient {
   setBufferFrames?(frames: number): void;
   setOsc?(cfg: Partial<Pick<OscStatus, 'enabled' | 'port' | 'allowNetwork'>>): void;
 }
+

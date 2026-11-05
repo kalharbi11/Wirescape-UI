@@ -43,16 +43,50 @@ export class Ticker {
     return () => this.global.delete(fn);
   }
 
-  dropModule(moduleId: number): void {
+  dropModule(moduleId: number, preserveTelemetry = false): void {
     this.bindings.delete(moduleId);
     this.visible.delete(moduleId);
+    // IDs can be reused after loading a patch or undoing. Never seed a new
+    // card with an effective value retained from the previous module.
+    if (this.latest && !preserveTelemetry) {
+      const prev = this.latest;
+      const t = this.latest = {
+        ...prev, effective: { ...prev.effective }, phase: { ...prev.phase },
+        envelope: { ...prev.envelope }, meters: { ...prev.meters },
+        scope: { ...prev.scope }, eventActivity: { ...prev.eventActivity },
+        outputs: prev.outputs ? { ...prev.outputs } : undefined,
+      };
+      delete t.effective[moduleId];
+      delete t.phase[moduleId];
+      delete t.envelope[moduleId];
+      delete t.meters[moduleId];
+      delete t.scope[moduleId];
+      for (const key of Object.keys(t.eventActivity)) {
+        if (key.startsWith(`${moduleId}:`)) delete t.eventActivity[key];
+      }
+      if (t.outputs) for (const key of Object.keys(t.outputs)) {
+        if (key.startsWith(`${moduleId}:`)) delete t.outputs[key];
+      }
+    }
   }
 
   setVisible(ids: Iterable<number>): void {
     this.visible = new Set(ids);
   }
 
-  push(t: Telemetry): void { this.latest = t; }
+  push(t: Telemetry): void {
+    // Effective parameters arrive as deltas. Retain updates even if another
+    // telemetry packet arrives before a draw, or a card is off screen.
+    const effective = { ...this.latest?.effective };
+    for (const [id, values] of Object.entries(t.effective)) {
+      effective[Number(id)] = { ...effective[Number(id)], ...values };
+    }
+    this.latest = { ...t, effective };
+  }
+
+  /** A graph replacement starts a new telemetry epoch, even if IDs repeat. */
+  resetTelemetry(): void { this.latest = null; }
+
   /** The most recent telemetry frame, for readers outside a binding (info boxes). */
   get last(): Telemetry | null { return this.latest; }
 

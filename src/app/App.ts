@@ -5,7 +5,7 @@ import { PatchDoc } from '../patch/PatchDoc';
 import { History } from '../patch/History';
 import type { Connection, PatchV2 } from '../patch/types';
 import { FakeEngine } from '../engine/FakeEngine';
-import { EngineRefusal, type SystemStatus } from '../engine/EngineClient';
+import { EngineRefusal, type SystemStatus, type EngineClient } from '../engine/EngineClient';
 import { Ticker } from '../runtime/Ticker';
 import { PatchCanvas, type Selection } from '../canvas/PatchCanvas';
 import type { PortDirection } from '../modules/types';
@@ -266,6 +266,7 @@ export class App {
   // ---- patch lifecycle --------------------------------------------------
 
   loadPatch(patch: PatchV2, name = 'Untitled'): void {
+    this.ticker.resetTelemetry();
     this.doc.replace(patch);
     this.patchName = name;
     this.nameEl.textContent = name;
@@ -340,6 +341,7 @@ export class App {
   private restoreSnapshot(p: PatchV2): void {
     const view = this.doc.ui.view;
     this.canvas.select({ kind: 'none' });
+    this.ticker.resetTelemetry();
     this.doc.replace({ ...p, ui: { ...(p.ui ?? {}), view } });
     void this.engine.loadGraph(this.doc.toJSON());
     requestAnimationFrame(() => this.canvas.invalidateAnchors());
@@ -664,7 +666,7 @@ export class App {
 
   private attachShortcuts(): void {
     window.addEventListener('keydown', e => {
-      if (isTyping()) return;
+      if (isTyping() || this.settings.isOpen || this.shortcuts.isOpen) return;
       const mod = e.ctrlKey || e.metaKey;
       if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); this.exportPatch(); return; }
       if (mod && e.key.toLowerCase() === 'o') { e.preventDefault(); this.fileInput.click(); return; }
@@ -727,58 +729,87 @@ export class App {
   // ---- settings ---------------------------------------------------------
 
   private openSettings(): void {
+    const engine: EngineClient = this.engine;
     this.settings.body.replaceChildren();
     const b = this.settings.body;
+    let stopMonitor: (() => void) | undefined;
 
     b.append(el('h3', 'settings-group', 'Audio'));
-    void this.engine.listAudioDevices().then(devices => {
-      const sel = select(
-        devices.map(d => ({ value: d.id, label: d.name })),
-        this.lastStatus?.audio.deviceId ?? devices[0]!.id,
-        v => this.engine.selectAudioDevice(v),
-      );
-      sel.dataset.testid = 'audio-device';
-      const buffer = select(
-        [64, 128, 256, 512, 1024].map(n => ({ value: String(n), label: `${n} frames` })),
-        String(this.lastStatus?.audio.bufferFrames ?? 256),
-        v => this.engine.setBuffer(Number(v)),
-      );
-      buffer.dataset.testid = 'audio-buffer';
-      const dev = devices.find(d => d.id === (this.lastStatus?.audio.deviceId ?? devices[0]!.id));
-      const rates = select(
-        (dev?.sampleRates ?? [48000]).map(n => ({ value: String(n), label: `${(n / 1000).toFixed(1)} kHz` })),
-        String(this.lastStatus?.audio.sampleRate ?? 48000),
-        v => this.engine.setSampleRate?.(Number(v)),
-      );
+    const audioFields = el('div', 'settings-audio');
+    b.append(audioFields);
+    void engine.listAudioDevices().then(devices => {
+      // The dialog may have been rebuilt while device enumeration was pending.
+      if (!b.contains(audioFields)) return;
+      if (!devices.length) {
+        const empty = el('div', 'muted', 'No audio devices available.');
+        empty.dataset.testid = 'audio-no-devices';
+        audioFields.append(empty);
+        return;
+      }
+      const currentId = this.lastStatus?.audio.deviceId ?? devices[0]!.id;
+      const rates = select([], '', v => engine.setSampleRate?.(Number(v)));
       rates.dataset.testid = 'audio-rate';
-      b.insertBefore(field('Output device', sel), b.children[1] ?? null);
-      b.insertBefore(field('Sample rate', rates), b.children[2] ?? null);
-      b.insertBefore(field('Buffer size', buffer, 'Lower is tighter, and more likely to drop out'), b.children[3] ?? null);
+      const refreshRates = (deviceId: string) => {
+        const dev = devices.find(d => d.id === deviceId);
+        rates.replaceChildren(...(dev?.sampleRates ?? [48000]).map(n => {
+          const option = document.createElement('option');
+          option.value = String(n); option.textContent = `${(n / 1000).toFixed(1)} kHz`;
+          return option;
+        }));
+        const actual = String(this.lastStatus?.audio.sampleRate ?? 48000);
+        rates.value = actual;
+        // Do not imply an unsupported rate is active; ask the engine to pick it.
+        if (!rates.value && rates.options.length) {
+          rates.selectedIndex = 0;
+          engine.setSampleRate?.(Number(rates.value));
+        }
+      };
+      const sel = select(devices.map(d => ({ value: d.id, label: d.name })), currentId, v => {
+        engine.selectAudioDevice(v);
+        if (engine.setSampleRate) refreshRates(v);
+      });
+      sel.dataset.testid = 'audio-device';
+      audioFields.append(field('Output device', sel));
+      if (engine.setSampleRate) {
+        refreshRates(currentId);
+        audioFields.append(field('Sample rate', rates));
+      }
+      if (engine.setBufferFrames) {
+        const buffer = select(
+          [64, 128, 256, 512, 1024].map(n => ({ value: String(n), label: `${n} frames` })),
+          String(this.lastStatus?.audio.bufferFrames ?? 256),
+          v => engine.setBufferFrames?.(Number(v)),
+        );
+        buffer.dataset.testid = 'audio-buffer';
+        audioFields.append(field('Buffer size', buffer, 'Lower is tighter, and more likely to drop out'));
+      }
+    }).catch(() => {
+      if (b.contains(audioFields)) audioFields.textContent = 'Audio devices could not be listed.';
     });
 
     b.append(el('h3', 'settings-group', 'MIDI'));
     for (const d of this.lastStatus?.midi.devices ?? []) {
-      b.append(field(d.name, switchButton(d.enabled !== false, on => this.engine.setMidiEnabled(d.id, on))));
+      b.append(field(d.name, switchButton(d.enabled !== false, on => engine.setMidiEnabled(d.id, on))));
     }
 
     const osc = this.lastStatus?.osc;
-    if (osc && this.engine.setOsc) {
+    if (osc && engine.setOsc) {
       b.append(el('h3', 'settings-group', 'OSC'));
-      const on = switchButton(osc.enabled, v => this.engine.setOsc!({ enabled: v }));
+      const on = switchButton(osc.enabled, v => engine.setOsc!({ enabled: v }));
       on.dataset.testid = 'osc-enabled';
       b.append(field('OSC server', on, 'Lets other apps change parameters by message'));
       const port = el('input', 'input-text') as HTMLInputElement;
       port.type = 'number'; port.min = '1024'; port.max = '65535'; port.value = String(osc.port);
       port.dataset.testid = 'osc-port';
       port.addEventListener('change', () => {
-        try { this.engine.setOsc!({ port: Number(port.value) }); }
+        try { engine.setOsc!({ port: Number(port.value) }); }
         catch (err) {
           this.toasts.show(err instanceof EngineRefusal ? err.message : 'That port was refused.', 'error');
           port.value = String(this.lastStatus?.osc?.port ?? 9000);
         }
       });
       b.append(field('Port', port));
-      const net = switchButton(osc.allowNetwork, v => this.engine.setOsc!({ allowNetwork: v }));
+      const net = switchButton(osc.allowNetwork, v => engine.setOsc!({ allowNetwork: v }));
       net.dataset.testid = 'osc-network';
       b.append(field('Allow network', net, 'Off: this computer only. On: any device on your network can control the patch'));
       const mon = el('div', 'osc-monitor');
@@ -790,13 +821,7 @@ export class App {
           : [el('div', 'osc-line muted', this.lastStatus?.osc?.enabled ? 'Waiting for messages…' : 'OSC is off')]));
       };
       paint();
-      // onStatus calls back at once, before the box is in the dialog; stop listening once it is gone.
-      let seen = false;
-      const off = this.engine.onStatus(() => {
-        if (mon.isConnected) seen = true;
-        else if (seen) { queueMicrotask(() => off()); return; }
-        paint();
-      });
+      stopMonitor = engine.onStatus(paint);
       b.append(field('Recent messages', mon));
     }
 
@@ -846,7 +871,7 @@ export class App {
     debug.addEventListener('click', () => { this.settings.close(); this.devPanel.toggle(true); });
     b.append(debug);
 
-    this.settings.open('Settings');
+    this.settings.open('Settings', () => stopMonitor?.());
   }
 
   private setPref(patch: Partial<Preferences>): void {
@@ -910,3 +935,4 @@ export class App {
 
 declare const __APP_VERSION__: string;
 declare const __BUILD__: string;
+

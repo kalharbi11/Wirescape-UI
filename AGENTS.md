@@ -3,7 +3,7 @@
 Wirescape is a browser-based modular synth UI that targets a Raspberry Pi (Chromium) first and the laptop second. This repo holds the **design system and a working reference implementation** of its interface. The prototype brief (the app structure, fake engine, patch format, feature list) lives in the Claude Docs artifact "Wirescape UI prototype brief": https://claude.ai/artifact/XYQYjdRGwLHrUswEeSn5jx
 
 ## Status and plan
-**Read [`docs/PLAN.md`](docs/PLAN.md) first.** Phases 1–3 are built and phase 3.5 (merge and reskin to this design system) is done on branch `phase/3.5-reskin`, which goes to `main`. The app (Vite + TypeScript) now lives in this repo. Next is owner checkpoint A, then phases 4–6; the real engine (phase 7) lives in `kalharbi11/wirescape`.
+**Read [`docs/PLAN.md`](docs/PLAN.md) first.** Phases 1–3 are built and phase 3.5 (merge and reskin to this design system) is done on branch `phase/3.5-reskin`, which goes to `main`. The app (Vite + TypeScript) now lives in this repo. Phase 3.5 is approved for the current continuation. Phases 4–6 are implemented on stacked branches; actual Pi measurement remains open. See DESIGN §18 for signature panels and system audit fixes; the real engine (phase 7) lives in `kalharbi11/wirescape`.
 
 ## Read in this order
 
@@ -110,3 +110,4 @@ new Promise(res=>{const st=new Map();for(const t of tickers){const f=t.fn;t.fn=(
  const id=(t.el.closest('.item')||{}).id||'?';st.set(id,(st.get(id)||0)+performance.now()-t0);};t.vis=true;}
  let n=0;const c=()=>{if(++n<120)requestAnimationFrame(c);else res([...st].sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+' '+(v/120).toFixed(3)+' ms'));};requestAnimationFrame(c);})
 ```
+

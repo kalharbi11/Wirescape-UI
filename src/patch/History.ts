@@ -23,6 +23,7 @@ export class History {
   private pending = false;
   private suppress = false;
   private pointerDown = false;
+  private finishingPointer = false;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private listeners = new Set<() => void>();
   readonly limit = 200;
@@ -33,19 +34,28 @@ export class History {
       if (this.suppress || e.t === 'view' || e.t === 'reset') return;
       this.schedule();
     });
-    window.addEventListener('pointerdown', () => { this.pointerDown = true; }, true);
+    window.addEventListener('pointerdown', () => {
+      // A new gesture must not absorb a keyboard/typed edit still debouncing.
+      if (!this.pointerDown) this.flush();
+      this.pointerDown = true;
+    }, true);
     const up = () => {
       this.pointerDown = false;
-      if (this.pending) this.later(0);
+      // The click event runs after pointerup and may itself change the doc.
+      // Keep its edits in this gesture's end-of-task commit.
+      this.finishingPointer = true;
+      this.later(0);
     };
     window.addEventListener('pointerup', up, true);
     window.addEventListener('pointercancel', up, true);
+    window.addEventListener('blur', up);
   }
 
   /** Start over from the document as it is (after a load or a new patch). */
   reset(): void {
     this.clearTimer();
     this.pending = false;
+    this.finishingPointer = false;
     this.past = [];
     this.future = [];
     this.current = this.snap();
@@ -59,6 +69,7 @@ export class History {
   /** Commit any pending change now (call before saving or undoing). */
   flush(): void {
     this.clearTimer();
+    this.finishingPointer = false;
     if (!this.pending) return;
     this.pending = false;
     const s = this.snap();
@@ -104,7 +115,7 @@ export class History {
   private schedule(): void {
     this.pending = true;
     if (this.pointerDown) { this.clearTimer(); return; }
-    this.later(350);
+    this.later(this.finishingPointer ? 0 : 350);
   }
 
   private later(ms: number): void {

@@ -1,0 +1,52 @@
+# Pi UI validation
+
+Runner: `pi-ui`. Required labels: `self-hosted`, `Linux`, `ARM64`, `pi`, `ui`, `pi5`.
+The `pi-ui` job in Pi UI checks runs the browser suite with system Chromium **headed**,
+then records the 20-module/40-cable fixture at fit and 100% in Normal and Pi profiles.
+No audio engine, real MIDI/OSC, SSH, sudo or system-package installation is involved.
+
+Pi testing is paused at the owner's request. There are no automatic PR/push
+triggers. After this workflow reaches the default branch and the owner reconnects
+the monitor, resume with Actions → Pi UI checks → Run workflow as the repository
+owner on `main`. Other actors/refs are skipped. Already-dispatched runs must be
+cancelled separately in Actions; changing triggers does not cancel them.
+The job uses read-only repository permissions and does not persist checkout credentials.
+
+## Desktop prerequisites
+
+Run the runner as a user with access to a logged-in graphical session. Its service
+must inherit `DISPLAY` for X11/XWayland, or `WAYLAND_DISPLAY` plus `XDG_RUNTIME_DIR`
+for Wayland. Repository variables `PI_UI_DISPLAY`, `PI_UI_WAYLAND_DISPLAY` and
+`PI_UI_XDG_RUNTIME_DIR` may select that existing session; they do not grant access.
+Pure Wayland selects Chromium's Wayland backend. Install Chromium beforehand or
+set `WIRESCAPE_CHROMIUM` in the runner environment. Node 22 is set up by Actions;
+locked npm dependencies and Playwright's small ffmpeg helper are installed per job.
+
+Do not substitute Xvfb for this hardware-display measurement. Leave the desktop
+available during the run: switching focus or minimizing the browser invalidates
+its performance evidence. A missing/unusable desktop fails rather than falling
+back to headless. Hosted tests retain the 1920×1080 baseline. Pi tests use an un-emulated, maximized
+browser window and record the actual desktop screen, viewport and DPR.
+
+Owner hardware: Raspberry Pi 5B rev1.0, BCM2712, 8GB RAM, MicroSD; a 14-inch,
+16:9 externally powered monitor described as 2K. The exact negotiated resolution
+and scaling are measured at run time rather than inferred from the marketing name.
+
+## Evidence
+
+Download the `pi-ui-<SHA>` artifact. It includes preflight OS/model/memory/browser
+information, `playwright.json` (test results, frame report, GPU metadata), screenshots,
+video and failure traces. Each sample records measured requestAnimationFrame FPS,
+p95 frame interval, visibility/focus, smoothed telemetry-application cost and the
+20-module/40-cable counts. Pi drawing remains capped at30Hz; loop FPS is separate.
+The job checks the ≥30FPS UI target in both profiles/views. Hosted cloud results
+remain separate. Inspect renderer/display details and the exact revision before
+recording results in PERFORMANCE.md and closing OPEN-5. This does not validate
+real audio contention or latency; those belong to phase7 in `wirescape`.
+
+Hosted UI checks run independently, so an unavailable physical runner cannot block
+the normal hosted regression job. Physical Pi runs serialize across revisions.
+
+The staged runbook and read-only comparison with the main repo are in
+[PI_UI_TEST_PLAN.md](PI_UI_TEST_PLAN.md). Pi testing remains unrun until connected;
+the owner allows future autorun, but current manual triggering is retained.

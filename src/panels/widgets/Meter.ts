@@ -25,7 +25,7 @@ export class Meter {
   private unbind: () => void;
   private lastTime = -1;
 
-  constructor(moduleId: number, ticker: Ticker) {
+  constructor(moduleId: number, ticker: Ticker, labels: [string, string] = ['L', 'R']) {
     this.root = el('div', 'meter-pane');
     this.root.dataset.testid = `meter-${moduleId}`;
     for (let i = 0; i < 2; i++) {
@@ -35,7 +35,7 @@ export class Meter {
       const bar = el('i', 'meter-bar');
       const peak = el('i', 'meter-peak');
       track.append(bar, peak);
-      col.append(el('span', 'meter-lab', i ? 'R' : 'L'), track, clip);
+      col.append(el('span', 'meter-lab', labels[i]), track, clip);
       this.root.append(col);
       this.chans.push({ col, bar, peak, clip, level: 0, pk: 0, pkAt: 0, clipUntil: 0, sBar: -1, sPeak: -1, sClip: false });
     }
@@ -73,3 +73,4 @@ export class Meter {
 
   destroy(): void { this.unbind(); }
 }
+

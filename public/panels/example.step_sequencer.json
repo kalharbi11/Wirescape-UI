@@ -39,5 +39,10 @@
     "gate8",
     "vel8"
   ],
-  "modPorts": []
+  "modPorts": [],
+  "width": 800,
+  "roles": {
+    "run": "toggle",
+    "length": "number"
+  }
 }
