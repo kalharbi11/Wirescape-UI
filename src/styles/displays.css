@@ -76,3 +76,7 @@
 .step-pitch { cursor: ns-resize; }
 .step-gate[data-state='rest'] { color: var(--mute); }
 .step-gate[data-state='tie'] { color: var(--rust); }
+
+/* Output: scope lines up with the meter tracks (owner review): same width, same insets. */
+.meter-pane + .scope-pane, .scope-pane { width: 100%; min-width: 200px; box-sizing: border-box; padding: 0 9px 0 14px; }
+.scope-pane canvas { width: 100% !important; }
