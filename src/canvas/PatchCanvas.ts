@@ -116,6 +116,11 @@ export class PatchCanvas {
       savedType: m.module,
       onHeaderPointerDown: e => this.beginDrag(e, id),
       onRenameRequest: () => this.s.rename(id),
+      wirePort: p => {
+        p.addEventListener('pointerdown', e => this.beginPatch(e as PointerEvent, p));
+        p.addEventListener('contextmenu', e => this.portMenu(e as MouseEvent, p));
+      },
+      onPortsChanged: () => { this.clearModAnchors(id); this.syncCables(); },
     });
     const [x, y] = this.s.doc.position(id);
     card.root.style.left = `${x}px`;
@@ -126,12 +131,10 @@ export class PatchCanvas {
         return;
       this.selectModule(id, e.shiftKey);
     });
-    for (const p of card.allPorts()) {
-      p.addEventListener('pointerdown', e => this.beginPatch(e as PointerEvent, p));
-    }
-    // Modulatable knobs act as cable targets.
+    // Modulatable knobs act as cable targets, and as mapping targets / sources.
     for (const k of card.root.querySelectorAll<HTMLElement>('.knob-unit[data-modulatable="true"]')) {
       k.addEventListener('pointerup', () => { if (this.pending) this.dropOnKnob(id, k.dataset.param!); });
+      k.addEventListener('contextmenu', e => this.knobMenu(e, id, k.dataset.param!));
     }
     this.cardLayer.append(card.root);
     this.cards.set(id, card);
@@ -196,6 +199,12 @@ export class PatchCanvas {
         this.syncCables(); this.refreshEmptyState(); break;
       }
       case 'connection-added': case 'connection-removed':
+        // A parameter node appears with its first modulation and goes with its last;
+        // a collapsed rail reveals a port that gets connected.
+        for (const mid of new Set([e.c.from.module, e.c.to.module])) {
+          const card = this.cards.get(mid);
+          if (card?.syncPorts(false)) { card.measure(); this.clearModAnchors(mid); }
+        }
         this.syncCables();
         this.refreshKnobsFor(e.c);
         break;
@@ -254,6 +263,8 @@ export class PatchCanvas {
     if (!card) return null;
     const [cx, cy] = this.s.doc.position(e.module);
     if (kind === 'modulation' && dir === 'input') {
+      const node = card.paramAnchor(e.port);
+      if (node) return { x: cx + node.x, y: cy + node.y };
       const local = this.modAnchor(e.module, e.port);
       return local ? { x: cx + local.x, y: cy + local.y } : null;
     }
@@ -386,6 +397,14 @@ export class PatchCanvas {
     const kind = portEl.dataset.kind!;
     const hint = portEl.dataset.hint!;
 
+    // A parameter node: pull its modulation cable off, or start one from it.
+    if (kind === 'param') {
+      const mods = this.s.doc.connections.filter(c => c.kind === 'modulation' && c.to.module === module && c.to.port === port);
+      if (mods.length && !e.altKey) { this.beginGrabEnd(mods.at(-1)!, e); return; }
+      this.startDrag(e, { module, port, direction: 'input', kind: 'param', hint: 'cv_bi' });
+      return;
+    }
+
     // Pulling on an input that already has a cable grabs that cable's end.
     if (direction === 'input') {
       const existing = this.s.doc.cablesInto(module, port);
@@ -448,7 +467,7 @@ export class PatchCanvas {
     const o = this.pending.origin;
     const anchor = this.endpointPoint(
       { module: o.module, port: o.port },
-      o.direction, 'signal',
+      o.direction, o.kind === 'param' ? 'modulation' : 'signal',
     );
     let invalid = false;
     if (ev) {
@@ -456,7 +475,7 @@ export class PatchCanvas {
       const port = el2?.closest<HTMLElement>('.port');
       const knob = el2?.closest<HTMLElement>('.knob-unit');
       if (port) invalid = !this.portCompatible(o, port);
-      else if (knob) invalid = knob.dataset.modulatable !== 'true' || o.kind !== 'signal';
+      else if (knob) invalid = knob.dataset.modulatable !== 'true' || o.kind !== 'signal' || o.direction !== 'output';
     }
     this.cables.setGhost(
       o.direction === 'output' ? anchor : this.pending.cursor,
@@ -469,6 +488,9 @@ export class PatchCanvas {
     const dir = portEl.dataset.direction as PortDirection;
     if (dir === o.direction) return false;
     if (Number(portEl.dataset.module) === o.module) return false;
+    // A signal output can modulate a parameter node, and a parameter node takes a signal output.
+    if (portEl.dataset.kind === 'param') return o.kind === 'signal' && o.direction === 'output';
+    if (o.kind === 'param') return dir === 'output' && portEl.dataset.kind === 'signal';
     return portEl.dataset.kind === o.kind;
   }
 
@@ -479,7 +501,8 @@ export class PatchCanvas {
         p.classList.toggle('candidate', this.portCompatible(o, p));
       }
       for (const k of card.root.querySelectorAll<HTMLElement>('.knob-unit')) {
-        const ok = o.kind === 'signal' && o.direction === 'output' && k.dataset.modulatable === 'true';
+        const ok = o.kind === 'signal' && o.direction === 'output' && k.dataset.modulatable === 'true'
+          && Number(k.closest<HTMLElement>('.module')?.dataset.id) !== o.module;
         k.classList.toggle('candidate', ok);
       }
     }
@@ -546,6 +569,17 @@ export class PatchCanvas {
       kind: portEl.dataset.kind!,
       stereo: portEl.dataset.stereo,
     };
+    // Parameter nodes: modulation, in either direction of the gesture.
+    if (target.kind === 'param' || o.kind === 'param') {
+      if (target.kind === 'param' && o.direction === 'output' && o.kind === 'signal') {
+        this.dropOnKnob(target.module, target.port);
+      } else if (o.kind === 'param' && target.direction === 'output' && target.kind === 'signal') {
+        this.commitMapping({ module: target.module, port: target.port }, { module: o.module, param: o.port }, 0.3);
+      } else {
+        this.s.toast('A parameter node takes a signal output.', 'error');
+      }
+      return true;
+    }
     if (target.direction === o.direction) {
       this.s.toast(o.direction === 'output' ? 'Connect an output to an input.' : 'Connect an input to an output.', 'error');
       return true;
@@ -619,14 +653,102 @@ export class PatchCanvas {
     const p = d && findParam(d, paramId);
     if (!p) return;
     if (!p.modulatable) { this.s.toast(`${p.name} cannot be modulated.`, 'error'); return; }
-    const c: Connection = {
-      kind: 'modulation',
-      from: { module: o.module, port: o.port },
-      to: { module: moduleId, port: paramId },
-      amount: 0.3,
-    };
-    this.commitConnection(c, true);
+    this.commitMapping({ module: o.module, port: o.port }, { module: moduleId, param: paramId }, pending.detached?.amount ?? 0.3);
     this.pending = null;
+  }
+
+  /** Create a modulation (from a cable drop, a parameter node or the Map gesture). */
+  private commitMapping(from: { module: number; port: string }, to: { module: number; param: string }, amount: number): void {
+    if (from.module === to.module) { this.s.toast('Connect two different modules.', 'error'); return; }
+    const d = this.descriptorOf(to.module);
+    const p = d && findParam(d, to.param);
+    if (!p) return;
+    if (!p.modulatable) { this.s.toast(`${p.name} cannot be modulated.`, 'error'); return; }
+    this.commitConnection({ kind: 'modulation', from: { ...from }, to: { module: to.module, port: to.param }, amount }, true);
+  }
+
+  // ---- mapping (owner, 3.5 review) ---------------------------------------
+  //
+  // Right-click a signal output → "Map to a parameter…": every modulatable
+  // knob on the other modules lights up; click one to map it (a parameter
+  // node appears on that module's rail and the cable lands there). Or the
+  // other way round: right-click a knob → "Map from a source…", then click an
+  // output. Esc, or a click on empty canvas, cancels.
+
+  private mapping: { from?: { module: number; port: string }; to?: { module: number; param: string } } | null = null;
+  private menuEl: HTMLElement | null = null;
+
+  private portMenu(e: MouseEvent, portEl: HTMLElement): void {
+    e.preventDefault(); e.stopPropagation();
+    if (portEl.dataset.direction !== 'output' || portEl.dataset.kind !== 'signal') return;
+    const from = { module: Number(portEl.dataset.module), port: portEl.dataset.port! };
+    this.showMenu(e, [['Map to a parameter…', () => this.beginMapping({ from })]]);
+  }
+
+  private knobMenu(e: MouseEvent, moduleId: number, param: string): void {
+    e.preventDefault(); e.stopPropagation();
+    this.showMenu(e, [['Map from a source…', () => this.beginMapping({ to: { module: moduleId, param } })]]);
+  }
+
+  private showMenu(e: MouseEvent, items: [string, () => void][]): void {
+    this.closeMenu();
+    const m = el('div', 'ctx-menu');
+    m.dataset.testid = 'context-menu';
+    for (const [label, act] of items) {
+      const b = el('button', 'ctx-item', label);
+      b.dataset.testid = `context-${label.split(' ')[0]!.toLowerCase()}`;
+      b.addEventListener('pointerdown', ev => { ev.stopPropagation(); this.closeMenu(); act(); });
+      m.append(b);
+    }
+    m.style.left = `${e.clientX}px`; m.style.top = `${e.clientY}px`;
+    document.body.append(m);
+    this.menuEl = m;
+    setTimeout(() => window.addEventListener('pointerdown', this.closeMenuBound, { once: true }), 0);
+  }
+  private closeMenuBound = () => this.closeMenu();
+  private closeMenu(): void { this.menuEl?.remove(); this.menuEl = null; }
+
+  private beginMapping(m: NonNullable<PatchCanvas['mapping']>): void {
+    this.endMapping();
+    this.mapping = m;
+    this.root.classList.add('mapping');
+    for (const [mid, card] of this.cards) {
+      if (m.from) {
+        if (mid === m.from.module) continue;
+        for (const k of card.root.querySelectorAll<HTMLElement>('.knob-unit[data-modulatable="true"]')) k.classList.add('map-target');
+        for (const p of card.allPorts()) if (p.dataset.kind === 'param') p.classList.add('map-target');
+      } else if (m.to) {
+        if (mid === m.to.module) continue;
+        for (const p of card.allPorts()) if (p.dataset.direction === 'output' && p.dataset.kind === 'signal') p.classList.add('map-target');
+      }
+    }
+    this.s.toast(m.from ? 'Click a parameter to map it. Esc cancels.' : 'Click an output to map from. Esc cancels.');
+    window.addEventListener('pointerdown', this.mapClick, true);
+    window.addEventListener('keydown', this.mapKey, true);
+  }
+
+  private mapClick = (e: PointerEvent) => {
+    const m = this.mapping;
+    if (!m) return;
+    const t = e.target as HTMLElement;
+    const hit = t.closest<HTMLElement>('.map-target');
+    e.preventDefault(); e.stopPropagation();
+    if (hit) {
+      const mid = Number(hit.closest<HTMLElement>('.module')?.dataset.id ?? hit.dataset.module);
+      if (m.from) this.commitMapping(m.from, { module: mid, param: hit.dataset.param! }, 0.3);
+      else if (m.to) this.commitMapping({ module: mid, port: hit.dataset.port! }, m.to, 0.3);
+    }
+    this.endMapping();
+  };
+  private mapKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); this.endMapping(); } };
+
+  private endMapping(): void {
+    if (!this.mapping) return;
+    this.mapping = null;
+    this.root.classList.remove('mapping');
+    for (const n of this.root.querySelectorAll('.map-target')) n.classList.remove('map-target');
+    window.removeEventListener('pointerdown', this.mapClick, true);
+    window.removeEventListener('keydown', this.mapKey, true);
   }
 
   /**

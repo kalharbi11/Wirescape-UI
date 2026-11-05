@@ -213,11 +213,26 @@ function springStep(s: { cp: Point; v: Point }, tg: Point, dt: number, damp: num
   return true;
 }
 
-const quad = (a: Point, cp: Point, b: Point) =>
-  `M${a.x.toFixed(1)},${a.y.toFixed(1)} Q${cp.x.toFixed(1)},${cp.y.toFixed(1)} ${b.x.toFixed(1)},${b.y.toFixed(1)}`;
+/**
+ * Horizontal lead at each end (DESIGN §9): a cable always leaves an output
+ * to the right and enters an input from the left before it bends, so its
+ * end stays visible at the node even when the rest routes behind a card.
+ */
+function lead(a: Point, b: Point): number {
+  return Math.min(140, Math.max(36, Math.abs(b.x - a.x) * 0.3 + Math.abs(b.y - a.y) * 0.12));
+}
 
-const midQ = (a: Point, cp: Point, b: Point): Point =>
-  ({ x: 0.25 * a.x + 0.5 * cp.x + 0.25 * b.x, y: 0.25 * a.y + 0.5 * cp.y + 0.25 * b.y });
+/** Two cubic segments through the sag point `cp`, with horizontal tangents at both nodes. */
+const quad = (a: Point, cp: Point, b: Point) => {
+  const L = lead(a, b);
+  const tx = (b.x - a.x) / 4, ty = (b.y - a.y) / 4;
+  const f = (n: number) => n.toFixed(1);
+  return `M${f(a.x)},${f(a.y)} C${f(a.x + L)},${f(a.y)} ${f(cp.x - tx)},${f(cp.y - ty)} ${f(cp.x)},${f(cp.y)}`
+    + ` S${f(b.x - L)},${f(b.y)} ${f(b.x)},${f(b.y)}`;
+};
+
+/** The path passes through the sag point, so it is the cable's midpoint. */
+const midQ = (_a: Point, cp: Point, _b: Point): Point => ({ x: cp.x, y: cp.y });
 
 /** Kept for callers that need a resting path between two points. */
 export function route(a: Point, b: Point): string { return quad(a, sagPoint(a, b), b); }

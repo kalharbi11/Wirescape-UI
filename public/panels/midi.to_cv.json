@@ -31,5 +31,16 @@
   "short": {
     "pitch_bend_range_semitones": "BEND RANGE",
     "voice_count": "VOICES"
+  },
+  "ports": {
+    "output": {
+      "shown": 4,
+      "priority": [
+        "pitch",
+        "gate",
+        "velocity",
+        "notes"
+      ]
+    }
   }
 }

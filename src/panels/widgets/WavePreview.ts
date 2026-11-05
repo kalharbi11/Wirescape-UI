@@ -13,7 +13,7 @@ const CYCLES = 2;
 const INSET = 3;
 
 /**
- * LFO card: the waveform on a fading dot grid, with a phase line and dot driven
+ * LFO card: the waveform on a fading dot grid, with a phase dot driven
  * by the engine's real phase. The static layer (grid + wave) is cached and only
  * rebuilt when the shape or size changes.
  */
@@ -77,8 +77,7 @@ export class WavePreview {
 
     const u = ph / CYCLES;
     const px = x0 + u * (x1 - x0), py = yAt(u);
-    ctx.strokeStyle = pal.rust; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(Math.round(px) + 0.5, 4); ctx.lineTo(Math.round(px) + 0.5, h - 4); ctx.stroke();
+    // No phase line (owner, 3.5 review): the dot alone rides the wave on the dot grid.
     ctx.fillStyle = pal.rust;
     ctx.beginPath(); ctx.arc(px, py, 2.6, 0, Math.PI * 2); ctx.fill();
 

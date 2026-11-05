@@ -135,7 +135,7 @@ Parameter-to-control rule set (it can be inferred from the module data):
 ## 6. Displays
 
 - No background box and no border.
-- Waveforms (VCO, LFO): a fading dot grid (1 px dots every 8 px, alpha falling to 0 at the edges, pre-rendered once per size), a 1.1 px ink line with round joins, and **3–4 px horizontal inset** so strokes never clip at the canvas edge. The LFO adds a rust phase line, a dot and `φ 116° +0.90`.
+- Waveforms (VCO, LFO): a fading dot grid (1 px dots every 8 px, alpha falling to 0 at the edges, pre-rendered once per size), a 1.1 px ink line with round joins, and **3–4 px horizontal inset** so strokes never clip at the canvas edge. The LFO adds a rust phase dot and `φ 116° +0.90`; **no phase line** (owner, 3.5 review).
 - Filter curve: frequency grid (100 / 1 k / 10 k darker), dashed 0 dB line, dashed set-cutoff line, rust live-cutoff line, a light rust fill under the live curve; in graph mode, a hollow peak handle and `fc · Q` in rust.
 - Envelope: baseline axis with segment ticks, 1 px curve, 3.2 px hollow handles, dotted sustain guide, A D S R letters (the active one in rust), rust voice dot. Number boxes below.
 
@@ -145,6 +145,14 @@ Parameter-to-control rule set (it can be inferred from the module data):
 - **Proportions:** `tall` (default) or `wide` (a display beside the controls, for modules that need room). Each module picks one; they need not match.
 - **Header (A):** `CODE  Name ……… id` in a 6×12 px padded row with a hairline under it. The **i** sits at the right end. View switches (knobs ⇄ graph) also sit in the header.
 - **Ports: side rails.** Inputs on the left edge, outputs on the right, spread evenly along the full height, the 12 px jack straddling the card edge, label inside. Jack ring 1.5 px in the hint colour, graphite hole.
+- **Parameter nodes** (owner, 3.5 review). A modulatable parameter can have its own node on the left rail, under the signal inputs: a 10 px jack with a rust ring and a rust label (rust = modulation). A modulation cable lands on the node, never on the knob.
+  - A few **essential** parameters always have a node: `modPorts` in `panels/<id>.json`, else the hero and primary modulatable parameters, at most 2 (VCF: cutoff, resonance).
+  - Any other parameter gets a node **the moment something modulates it**, and loses it with its last cable, so modules with many parameters (CHAOS-lite has 22) stay clean.
+  - Dragging from a node with a cable pulls that cable off; from an empty node it starts a cable you drop on an output.
+- **Mapping.** Right-click a signal output → **Map to a parameter…**: every modulatable knob on the other modules shows a pulsing dashed rust ring (and existing parameter nodes pulse). Click one to map it (amount +0.30); the node appears and the cable lands there. The other way round: right-click a knob → **Map from a source…**, then click an output. Esc or a click elsewhere cancels. Dropping a cable on a knob or a node still works.
+- **Collapsed rails** (Grasshopper-style). A side with more than 5 ports shows 4 (or `ports.<side>.shown`), plus any that are connected, and a `− 4/8 +` control under the last node. `ports.<side>.priority` picks which show first (MIDI to CV: pitch, gate, velocity, notes). The count is saved per module in `ui.portsShown`.
+- **CC numbers.** With `ports.output.assign: "cc"` (CC to CV) each output label reads `CC 1` and is typed into on click (0–127), saved in `ui.ccMap[module][port]`. *Note for the code team:* the engine has no CC-number parameter yet; this needs one per output (or a mapping message) before it does anything.
+- **Header name.** When a module's name only repeats its code (`VCF VCF`), the header shows the category instead (`VCF Filter`, `LFO Motion`, `ENV ADSR` stays).
 - **Layout inside:** hero first, primaries in a row, trims and selectors last. Use a display only where it explains something you can't hear on your own.
 - **Filter graph mode** (multimode filters only): a header switch between `KNOBS` and `GRAPH`. *Note for the code team:* graph mode should add control you only get by seeing the curve, as EQ Eight does: drag the peak for cutoff + resonance, scroll on the peak for slope (12/24 dB), and a drive lift on the curve. Simple filters stay knob-only.
 
@@ -167,6 +175,7 @@ The stock set in the kit: VCF (hero-led), VCF multimode with the view switch, VC
 - Colour carries no meaning; the user picks it from the palette (§2).
 - **Idle:** solid 1.6 px. **Carrying signal:** dotted (round caps, dash 0.1/5, 2.4 px), static (OPEN-4). **Selected:** 2.6 px.
 - Drag: sag spring as above. Hit area 12 px.
+- **Horizontal lead at each node** (owner, 3.5 review). A cable leaves an output to the right and enters an input from the left before it bends: two cubic segments through the sag point with horizontal tangents at both ends, lead = clamp(0.3·|dx| + 0.12·|dy|, 36, 140) px. A cable that routes behind a card is still visibly attached at its node; a backward cable twists out and back.
 
 ## 10. Contracts
 
@@ -238,7 +247,12 @@ Knob tiers: hero L, primary and secondary M, trim S. Auto sections have no label
 | Drag from a *connected* input | grabs that cable's end to move it or pull it off |
 | Alt-drag from a connected input | starts a new cable instead |
 | Drop a cable on empty canvas | quick-add filtered to modules with a matching port; picking one completes the cable |
-| Drop a signal output on a knob | modulation, starting at amount +0.30 |
+| Drop a signal output on a knob, or on a parameter node | modulation, starting at amount +0.30 (a re-dropped cable keeps its amount) |
+| Right-click a signal output → Map to a parameter… | knobs on other modules light up; click one to map it; Esc cancels |
+| Right-click a knob → Map from a source… | outputs on other modules light up; click one |
+| Drag from a parameter node | with a cable: pull it off; without: start one, drop it on an output |
+| `−` / `+` under a collapsed rail | show one fewer / one more port |
+| Click a `CC n` label (CC to CV) | type the CC number |
 | Shift-drop on a signal input | adds alongside instead of replacing |
 | Click a cable | select it; a tool box appears at its midpoint; Delete removes it |
 | Selected cable: colour swatches | pick ink, rust, blue, olive, ochre or slate; stored in `ui.cableColors` |
@@ -271,6 +285,9 @@ Every interactive element carries a `data-testid`; a test asserts none is missin
 |---|---|
 | `module-<id>`, `module-header-<id>`, `module-title-<id>`, `poly-<id>` | card, header, title, poly badge |
 | `port-<id>-<direction>-<port>` | jack |
+| `param-port-<id>-<param>` | parameter node |
+| `ports-more-<id>-<direction>`, `ports-less-<id>-<direction>` | collapsed-rail + / − |
+| `context-menu`, `context-map` | right-click menu, its Map item |
 | `knob-<id>-<param>`, `readout-<id>-<param>`, `readout-input-<id>-<param>` | knob, its readout, the typing input |
 | `number-<id>-<param>` | number box |
 | `fader-<id>-<param>`, `fader-thumb-<id>-<param>` | fader, thumb |
@@ -282,7 +299,7 @@ Every interactive element carries a `data-testid`; a test asserts none is missin
 | `cable-<key>`, `cable-tools`, `cable-color-<name>`, `cable-amount` | cable, selected-cable tools |
 | `library-item-<module-id>`, `quick-add-<module-id>`, `debug-<switch>` | library, quick-add, dev switches |
 
-Tests (`npm test`): 23 in `tests/session.spec.ts` (21 test blocks; the patching test runs at 50/100/185 % zoom) and 12 in `tests/kit-controls.spec.ts` for the kit controls.
+Tests (`npm test`): 23 in `tests/session.spec.ts` (21 test blocks; the patching test runs at 50/100/185 % zoom) 12 in `tests/kit-controls.spec.ts` for the kit controls, and 5 in `tests/review-35.spec.ts` for the owner's 3.5 review (parameter nodes, mapping, collapsed rails and CC numbers, cable leads).
 
 ## 14. Frame figures
 

@@ -39,19 +39,22 @@
 }
 @media (prefers-reduced-motion: reduce) { .fd-seg-i { transition: none; } }
 
-/* Meter: transforms only. */
-.meter-pane { display: flex; gap: 6px; height: 64px; align-items: stretch; }
-.meter-col { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; width: 7px; }
-.meter-track { position: relative; flex: 1; width: 7px; overflow: hidden; }
+/* Meter: horizontal, transforms only. */
+.meter-pane { display: flex; flex-direction: column; gap: 5px; width: 100%; min-width: 200px; padding: 2px 0 12px; position: relative; }
+.meter-row { display: flex; align-items: center; gap: 6px; height: 7px; }
+.meter-lab { font: 500 8px var(--mono); color: var(--mute); letter-spacing: 0.09em; width: 8px; }
+.meter-track { position: relative; flex: 1; height: 7px; overflow: hidden; background: var(--hair2); }
 .meter-bar {
   position: absolute; inset: 0; background: var(--ink);
-  transform-origin: bottom; transform: scaleY(0); will-change: transform;
+  transform-origin: left; transform: scaleX(0); will-change: transform;
 }
-.meter-peak { position: absolute; inset: 0; opacity: 0; will-change: transform; }
-.meter-peak::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--ink); }
-.meter-clip { display: block; width: 7px; height: 2px; background: var(--hair); }
+.meter-peak { position: absolute; inset: 0; opacity: 0; will-change: transform; transform-origin: left; }
+.meter-peak::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 1px; margin-left: -1px; background: var(--ink); }
+.meter-clip { display: block; width: 3px; height: 7px; background: var(--hair); }
 .meter-clip.on { background: var(--rust); }
-.meter-lab { font: 500 8px var(--mono); color: var(--mute); letter-spacing: 0.09em; }
+.meter-scale { position: relative; height: 10px; margin: 0 9px 0 14px; border-top: .5px solid var(--hair); }
+.meter-tick { position: absolute; top: 2px; transform: translateX(-50%); font: 7.5px var(--mono); color: var(--mute); white-space: nowrap; }
+.meter-tick::before { content: ''; position: absolute; left: 50%; top: -5px; width: .5px; height: 3px; background: var(--mute); }
 
 /* Steps: tokens only. */
 .steps-pane .pane-head {

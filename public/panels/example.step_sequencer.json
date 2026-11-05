@@ -38,5 +38,6 @@
     "pitch8",
     "gate8",
     "vel8"
-  ]
+  ],
+  "modPorts": []
 }

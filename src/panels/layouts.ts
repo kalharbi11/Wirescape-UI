@@ -45,6 +45,10 @@ export interface PanelOverride {
   paneOptions?: Partial<Record<PaneKind, Record<string, unknown>>>;
   /** Parameters to leave off the card (still saved, still modulatable). */
   hidden?: string[];
+  /** Modulatable parameters that always have a node on the left rail. Default: hero + primary, at most 2. */
+  modPorts?: string[];
+  /** Rail options per side: how many ports show when collapsed, which first, editable CC numbers. */
+  ports?: Partial<Record<'input' | 'output', { shown?: number; priority?: string[]; assign?: 'cc' }>>;
 }
 
 export interface ResolvedLayout {
@@ -165,7 +169,8 @@ export function resolveLayout(d: ModuleDescriptor, ov: PanelOverride | undefined
 
   const panes = ov?.panes ?? [];
   const shape: CardShape = ov?.layout ?? 'tall';
-  const gutterIn = gutter(inputs(d).map(p => p.name));
+  // Parameter nodes share the left rail, so their labels count too (owner, 3.5 review).
+  const gutterIn = gutter([...inputs(d).map(p => p.name), ...d.parameters.filter(p => p.modulatable).map(p => short[p.id] ?? p.name)]);
   const gutterOut = gutter(outputs(d).map(p => p.name));
 
   // Width: the widest row of controls, or the widest pane.

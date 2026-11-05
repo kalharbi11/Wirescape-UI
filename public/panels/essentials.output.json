@@ -3,5 +3,6 @@
   "panes": [
     "meter",
     "scope"
-  ]
+  ],
+  "width": 300
 }

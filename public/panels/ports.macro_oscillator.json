@@ -40,5 +40,17 @@
     "timbre_amount": "TIMBRE",
     "morph_amount": "MORPH",
     "lpg_colour": "COLOUR"
+  },
+  "modPorts": [],
+  "ports": {
+    "input": {
+      "shown": 4,
+      "priority": [
+        "pitch",
+        "trigger",
+        "harmonics_cv",
+        "timbre_cv"
+      ]
+    }
   }
 }

@@ -1,4 +1,4 @@
-import type { ModuleDescriptor, ModulePort, PortDirection } from '../modules/types';
+import type { ModuleDescriptor, ModuleParam, ModulePort, PortDirection } from '../modules/types';
 import { inputs, outputs, hintColor, findPort, findParam, formatValue } from '../modules/registry';
 import { HEADER_H, portMinPitch } from '../panels/layouts';
 import { Panel, type PanelHost } from '../panels/PanelBuilder';
@@ -17,6 +17,26 @@ export interface CardOptions {
   savedType: string;
   onHeaderPointerDown(e: PointerEvent): void;
   onRenameRequest(): void;
+  /** Wire a port node's gestures (called once per node, when it is created). */
+  wirePort?(node: HTMLElement): void;
+  /** The rails changed (a node appeared or went): re-measure and reroute. */
+  onPortsChanged?(): void;
+}
+
+/** A rail with more ports than this collapses to a few plus + / − (owner, 3.5 review). */
+export const COLLAPSE_AT = 5;
+const SHOW_DEFAULT = 4;
+
+interface RailItem { dir: PortDirection; id: string; node: HTMLElement; param?: boolean; ctl?: boolean }
+
+/** Per-side rail options from `panels/<id>.json` → `ports`. */
+export interface RailOptions {
+  /** How many ports a collapsed rail shows before + (default 4). */
+  shown?: number;
+  /** Ports that show first when the rail is collapsed. */
+  priority?: string[];
+  /** `cc`: each port carries an editable MIDI CC number in its label. */
+  assign?: 'cc';
 }
 
 /** Short module code for the header: `VCF`, `LFO`, `MO` (DESIGN §7 header A). */
@@ -41,10 +61,14 @@ export class ModuleCard {
   readonly width: number;
   height = 0;
   readonly missing: boolean;
-  private readonly minHeight: number;
+  private minHeight: number;
   private readonly body: HTMLElement;
   private readonly titleEl: HTMLElement;
-  private readonly ports: { dir: PortDirection; port: ModulePort; node: HTMLElement; index: number; count: number }[] = [];
+  private rail: Record<PortDirection, RailItem[]> = { input: [], output: [] };
+  private readonly nodePool = new Map<string, HTMLElement>();
+  private readonly sigIns: ModulePort[];
+  private readonly sigOuts: ModulePort[];
+  private readonly baseMinHeight: number;
   private readonly portEls = new Map<string, HTMLElement>();
   private readonly anchors = new Map<string, PortAnchor>();
   private readonly polyBadge: HTMLElement;
@@ -103,11 +127,13 @@ export class ModuleCard {
     }
 
     this.body.append(coreEl);
-    this.buildPorts('input', ins);
-    this.buildPorts('output', outs);
+    this.sigIns = ins;
+    this.sigOuts = outs;
+    // The rails set their own height in syncPorts (a collapsed rail is short), so the base only keeps two rows.
+    this.baseMinHeight = HEADER_H + 2 * portMinPitch;
     this.root.append(this.body);
     this.root.style.width = `${this.width}px`;
-    this.root.style.minHeight = `${this.minHeight}px`;
+    this.syncPorts(false);
 
     if (d) {
       this.info = attachModuleInfo(this.root, slot, {
@@ -128,11 +154,210 @@ export class ModuleCard {
     this.height = Math.max(this.minHeight, Math.ceil(this.root.offsetHeight));
     this.root.style.height = `${this.height}px`;
     const bodyH = this.height - HEADER_H;
-    for (const p of this.ports) {
-      const y = ((p.index + 1) * bodyH) / (p.count + 1);
-      p.node.style.top = `${y}px`;
-      this.anchors.set(key(p.dir, p.port.id), { x: p.dir === 'input' ? 0 : this.width, y: HEADER_H + y });
+    this.anchors.clear();
+    for (const dir of ['input', 'output'] as const) {
+      const items = this.rail[dir];
+      items.forEach((it, i) => {
+        const y = ((i + 1) * bodyH) / (items.length + 1);
+        it.node.style.top = `${y}px`;
+        if (it.ctl) return;
+        this.anchors.set(it.param ? pkey(it.id) : key(dir, it.id), { x: dir === 'input' ? 0 : this.width, y: HEADER_H + y });
+      });
     }
+  }
+
+  /* ---- rails: ports, parameter nodes, collapse --------------------------- */
+
+  private connected(dir: PortDirection, port: string): boolean {
+    const id = this.o.moduleId;
+    return this.o.host.doc.connections.some(c => dir === 'input'
+      ? c.kind !== 'modulation' && c.to.module === id && c.to.port === port
+      : c.from.module === id && c.from.port === port);
+  }
+
+  private railOpt(dir: PortDirection): RailOptions {
+    return (this.o.override as { ports?: Partial<Record<PortDirection, RailOptions>> } | undefined)?.ports?.[dir] ?? {};
+  }
+
+  private uiMap<T>(name: string): Record<string, T> {
+    const ui = this.o.host.doc.ui as Record<string, unknown>;
+    const all = (ui[name] ?? {}) as Record<string, Record<string, T>>;
+    return all[String(this.o.moduleId)] ?? {};
+  }
+
+  private setUi(name: string, k: string, v: unknown): void {
+    const ui = this.o.host.doc.ui as Record<string, unknown>;
+    const all = { ...((ui[name] ?? {}) as Record<string, Record<string, unknown>>) };
+    all[String(this.o.moduleId)] = { ...(all[String(this.o.moduleId)] ?? {}), [k]: v };
+    ui[name] = all;
+  }
+
+  /** How many ports a collapsed rail shows (patch `ui.portsShown`, else the override, else 4). */
+  private shownCount(dir: PortDirection, total: number): number {
+    const n = this.uiMap<number>('portsShown')[dir] ?? this.railOpt(dir).shown ?? SHOW_DEFAULT;
+    return Math.max(1, Math.min(total, n));
+  }
+
+  /**
+   * Parameter nodes (owner, 3.5 review): a few essential modulatable
+   * parameters always have a node; any other parameter gets one the moment
+   * something modulates it, and loses it when the last cable goes.
+   */
+  private paramNodes(): ModuleParam[] {
+    const d = this.o.descriptor;
+    if (!d) return [];
+    const id = this.o.moduleId;
+    const modulated = new Set(this.o.host.doc.connections
+      .filter(c => c.kind === 'modulation' && c.to.module === id).map(c => c.to.port));
+    const essential = new Set(this.essentialParams());
+    return d.parameters.filter(p => p.modulatable && (essential.has(p.id) || modulated.has(p.id)));
+  }
+
+  private essentialParams(): string[] {
+    const ov = this.o.override as { modPorts?: string[] } | undefined;
+    if (ov?.modPorts) return ov.modPorts;
+    const d = this.o.descriptor!;
+    const roles = this.panel?.layout.roles ?? {};
+    return d.parameters
+      .filter(p => p.modulatable && (roles[p.id] === 'hero' || roles[p.id] === 'primary'))
+      .slice(0, 2).map(p => p.id);
+  }
+
+  /** Rebuild the rails from the patch. Returns true when a node appeared or went. */
+  syncPorts(notify = true): boolean {
+    const before = (['input', 'output'] as const).map(d => this.rail[d].map(r => (r.param ? 'p:' : '') + r.id).join(',')).join('|');
+    const next: Record<PortDirection, RailItem[]> = { input: [], output: [] };
+    for (const dir of ['input', 'output'] as const) {
+      const list = dir === 'input' ? this.sigIns : this.sigOuts;
+      let shown = list;
+      const collapsible = list.length > COLLAPSE_AT;
+      if (collapsible) {
+        const n = this.shownCount(dir, list.length);
+        const pri = this.railOpt(dir).priority ?? [];
+        const ranked = [...list].sort((a, b) => rank(pri, a.id, list) - rank(pri, b.id, list));
+        const keep = new Set(ranked.slice(0, n).map(p => p.id));
+        shown = list.filter(p => keep.has(p.id) || this.connected(dir, p.id));
+      }
+      for (const p of shown) next[dir].push({ dir, id: p.id, node: this.portNode(dir, p) });
+      if (dir === 'input') {
+        for (const p of this.paramNodes()) next.input.push({ dir, id: p.id, param: true, node: this.paramNode(p) });
+      }
+      if (collapsible) next[dir].push({ dir, id: '__ctl', ctl: true, node: this.railCtl(dir, shown.length, list.length) });
+    }
+    for (const dir of ['input', 'output'] as const) for (const it of this.rail[dir]) it.node.remove();
+    this.portEls.clear();
+    for (const dir of ['input', 'output'] as const) {
+      for (const it of next[dir]) {
+        this.body.append(it.node);
+        if (!it.ctl) this.portEls.set(it.param ? pkey(it.id) : key(dir, it.id), it.node);
+      }
+    }
+    this.rail = next;
+    const rows = Math.max(next.input.length, next.output.length);
+    this.minHeight = Math.max(this.baseMinHeight, HEADER_H + (rows + 1) * portMinPitch);
+    this.root.style.minHeight = `${this.minHeight}px`;
+    const after = (['input', 'output'] as const).map(d => this.rail[d].map(r => (r.param ? 'p:' : '') + r.id).join(',')).join('|');
+    const changed = before !== after;
+    if (changed && notify && this.root.isConnected) { this.measure(); this.o.onPortsChanged?.(); }
+    return changed;
+  }
+
+  private portNode(dir: PortDirection, p: ModulePort): HTMLElement {
+    const k = key(dir, p.id);
+    const hit = this.nodePool.get(k);
+    if (hit) return hit;
+    const node = el('div', `port ${dir}`);
+    node.dataset.module = String(this.o.moduleId);
+    node.dataset.port = p.id;
+    node.dataset.direction = dir;
+    node.dataset.kind = p.kind;
+    node.dataset.hint = String(p.hint);
+    node.dataset.poly = String(p.poly);
+    if (p.stereo_pair) node.dataset.stereo = p.stereo_pair;
+    node.dataset.testid = `port-${this.o.moduleId}-${dir}-${p.id}`;
+    node.title = `${dir === 'input' ? 'Input' : 'Output'}: ${p.name} · ${p.kind} / ${p.hint}`;
+    const jack = el('span', 'port-jack');
+    jack.style.setProperty('--hint', hintColor(String(p.hint)));
+    jack.append(el('span', 'port-ring'), el('span', 'port-activity'));
+    const label = this.railOpt(dir).assign === 'cc' ? this.ccLabel(p) : el('span', 'port-label', p.name);
+    if (dir === 'input') node.append(jack, label); else node.append(label, jack);
+    this.nodePool.set(k, node);
+    this.o.wirePort?.(node);
+    return node;
+  }
+
+  /** A modulation input for a parameter: rust ring, lives on the left rail. */
+  private paramNode(p: ModuleParam): HTMLElement {
+    const k = pkey(p.id);
+    const hit = this.nodePool.get(k);
+    if (hit) return hit;
+    const node = el('div', 'port input param');
+    node.dataset.module = String(this.o.moduleId);
+    node.dataset.port = p.id;
+    node.dataset.param = p.id;
+    node.dataset.direction = 'input';
+    node.dataset.kind = 'param';
+    node.dataset.testid = `param-port-${this.o.moduleId}-${p.id}`;
+    node.title = `Modulation input: ${p.name}. Drag an output here, or right-click an output and choose Map.`;
+    const jack = el('span', 'port-jack');
+    jack.append(el('span', 'port-ring'), el('span', 'port-activity'));
+    const short = this.o.override?.short?.[p.id] ?? p.name;
+    node.append(jack, el('span', 'port-label', short));
+    this.nodePool.set(k, node);
+    this.o.wirePort?.(node);
+    return node;
+  }
+
+  /** + / − under a collapsed rail, with the count. */
+  private railCtl(dir: PortDirection, shown: number, total: number): HTMLElement {
+    const k = `ctl:${dir}`;
+    let node = this.nodePool.get(k);
+    if (!node) {
+      node = el('div', `port-ctl ${dir}`);
+      const less = el('button', 'pc-btn', '−');
+      const more = el('button', 'pc-btn', '+');
+      less.dataset.testid = `ports-less-${this.o.moduleId}-${dir}`;
+      more.dataset.testid = `ports-more-${this.o.moduleId}-${dir}`;
+      less.title = 'Show fewer ports'; more.title = 'Show more ports';
+      const count = el('span', 'pc-count');
+      node.append(less, count, more);
+      const step = (d: number) => {
+        const list = dir === 'input' ? this.sigIns : this.sigOuts;
+        this.setUi('portsShown', dir, Math.max(1, Math.min(list.length, this.shownCount(dir, list.length) + d)));
+        this.syncPorts();
+      };
+      less.addEventListener('pointerdown', e => { e.stopPropagation(); step(-1); });
+      more.addEventListener('pointerdown', e => { e.stopPropagation(); step(1); });
+      this.nodePool.set(k, node);
+    }
+    node.querySelector('.pc-count')!.textContent = `${shown}/${total}`;
+    return node;
+  }
+
+  /** `CC 74` label you can click and type into (stored in patch `ui.ccMap`). */
+  private ccLabel(p: ModulePort): HTMLElement {
+    const lab = el('span', 'port-label cc-label');
+    const def = Number(p.id.replace(/\D/g, '')) || 1;
+    const show = () => { lab.textContent = `CC ${this.uiMap<number>('ccMap')[p.id] ?? def}`; };
+    show();
+    lab.title = 'Click to type the CC number';
+    lab.addEventListener('pointerdown', e => {
+      e.stopPropagation(); e.preventDefault();
+      const inp = el('input', 'cc-input') as HTMLInputElement;
+      inp.type = 'number'; inp.min = '0'; inp.max = '127';
+      inp.value = String(this.uiMap<number>('ccMap')[p.id] ?? def);
+      lab.replaceChildren(inp);
+      inp.focus(); inp.select();
+      const done = (ok: boolean) => {
+        const n = Math.round(Number(inp.value));
+        if (ok && Number.isFinite(n) && n >= 0 && n <= 127) this.setUi('ccMap', p.id, n);
+        show();
+      };
+      inp.addEventListener('keydown', ev => { if (ev.key === 'Enter') done(true); if (ev.key === 'Escape') done(false); ev.stopPropagation(); });
+      inp.addEventListener('blur', () => done(true));
+      inp.addEventListener('pointerdown', ev => ev.stopPropagation());
+    });
+    return lab;
   }
 
   /** Reconstruct a missing module's ports from the cables that reference it. */
@@ -167,33 +392,15 @@ export class ModuleCard {
     return core;
   }
 
-  private buildPorts(dir: PortDirection, list: ModulePort[]): void {
-    list.forEach((p, index) => {
-      const node = el('div', `port ${dir}`);
-      node.dataset.module = String(this.o.moduleId);
-      node.dataset.port = p.id;
-      node.dataset.direction = dir;
-      node.dataset.kind = p.kind;
-      node.dataset.hint = String(p.hint);
-      node.dataset.poly = String(p.poly);
-      if (p.stereo_pair) node.dataset.stereo = p.stereo_pair;
-      node.dataset.testid = `port-${this.o.moduleId}-${dir}-${p.id}`;
-      node.title = `${dir === 'input' ? 'Input' : 'Output'}: ${p.name} · ${p.kind} / ${p.hint}`;
-
-      const jack = el('span', 'port-jack');
-      jack.style.setProperty('--hint', hintColor(String(p.hint)));
-      jack.append(el('span', 'port-ring'), el('span', 'port-activity'));
-      const label = el('span', 'port-label', p.name);
-      if (dir === 'input') node.append(jack, label); else node.append(label, jack);
-      this.body.append(node);
-      this.portEls.set(key(dir, p.id), node);
-      this.ports.push({ dir, port: p, node, index, count: list.length });
-    });
-  }
-
   anchor(dir: PortDirection, port: string): PortAnchor | undefined {
     return this.anchors.get(key(dir, port));
   }
+  /** Card-local anchor of a parameter's modulation node, if it is on the rail. */
+  paramAnchor(param: string): PortAnchor | undefined {
+    return this.anchors.get(pkey(param));
+  }
+  /** Parameter nodes and knobs that a mapping gesture can target. */
+  paramEl(param: string): HTMLElement | undefined { return this.portEls.get(pkey(param)); }
   portEl(dir: PortDirection, port: string): HTMLElement | undefined {
     return this.portEls.get(key(dir, port));
   }
@@ -201,7 +408,8 @@ export class ModuleCard {
 
   /** One-shot port pulse (event, DESIGN §8: 380 ms, scale 1→2.4, opacity .9→0). */
   pulsePort(dir: PortDirection, port: string): void {
-    const ring = this.portEls.get(key(dir, port))?.querySelector<HTMLElement>('.port-ring');
+    const ring = (this.portEls.get(key(dir, port)) ?? (dir === 'input' ? this.portEls.get(pkey(port)) : undefined))
+      ?.querySelector<HTMLElement>('.port-ring');
     if (!ring || motionOff()) return;
     ring.getAnimations().forEach(a => a.cancel());
     ring.animate([{ transform: 'scale(1)', opacity: 0.9 }, { transform: 'scale(2.4)', opacity: 0 }],
@@ -210,7 +418,10 @@ export class ModuleCard {
 
   refreshHeader(): void {
     const label = this.o.host.doc.label(this.o.moduleId);
-    const base = this.o.descriptor?.name ?? this.o.savedType;
+    const d = this.o.descriptor;
+    // A name that only repeats the code ("VCF  VCF") gives way to the category ("VCF  Filter").
+    const code = d ? moduleCode(d.id, this.o.override?.code) : '';
+    const base = d ? (d.name.toUpperCase() === code ? d.category : d.name) : this.o.savedType;
     this.titleEl.textContent = label ?? base;
     this.titleEl.title = label ? `${label} — ${base} · double-click to rename` : 'Double-click to rename';
     this.titleEl.dataset.testid = `module-title-${this.o.moduleId}`;
@@ -294,3 +505,8 @@ export class ModuleCard {
 }
 
 const key = (dir: PortDirection, port: string) => `${dir}:${port}`;
+const pkey = (param: string) => `param:${param}`;
+const rank = (pri: string[], id: string, list: ModulePort[]) => {
+  const i = pri.indexOf(id);
+  return i >= 0 ? i - 1000 : list.findIndex(p => p.id === id);
+};

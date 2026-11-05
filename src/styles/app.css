@@ -254,6 +254,48 @@ body.hide-port-labels .port-label { display: none; }
 .port.candidate .port-jack { box-shadow: 0 0 0 2px var(--card), 0 0 0 3px var(--graph); }
 .port.candidate { color: var(--ink); }
 
+/* Parameter nodes (owner, 3.5 review): modulation inputs for knobs, on the
+   left rail under the signal inputs. Rust means modulation (DESIGN §1). */
+.port.param .port-jack { --hint: var(--rust); width: calc(var(--port-jack) - 2px); height: calc(var(--port-jack) - 2px); margin-left: 1px; border-style: solid; }
+.port.param .port-jack::after { inset: 3px; background: var(--rust); opacity: .55; }
+.port.param .port-label { color: var(--rust); opacity: .8; }
+
+/* Collapsed rail: + / − and the count (Grasshopper-style). */
+.port-ctl {
+  position: absolute; z-index: 3; display: flex; align-items: center; gap: 3px;
+  height: 16px; margin-top: -8px; font: 500 7.5px var(--mono); color: var(--mute);
+}
+.port-ctl.input { left: 6px; }
+.port-ctl.output { right: 6px; flex-direction: row; }
+.pc-btn {
+  width: 14px; height: 14px; border-radius: 50%; border: .5px solid var(--graph); background: var(--card);
+  font: 500 10px/12px var(--mono); color: var(--ink); padding: 0; cursor: pointer;
+}
+.pc-btn:hover { background: var(--ink); color: var(--card); }
+.pc-count { min-width: 22px; text-align: center; font-variant-numeric: tabular-nums; }
+.cc-label { pointer-events: auto; cursor: text; border-bottom: 1px dotted var(--mute); }
+.cc-input { width: 34px; font: 500 8px var(--mono); border: 0; border-bottom: 1px solid var(--ink); background: transparent; padding: 0; color: var(--ink); }
+
+/* Mapping mode: everything you can map to (or from) pulses. */
+.mapping .map-target .tring { animation: tring-pulse 1.1s ease-in-out infinite; opacity: 1; }
+.mapping .knob-unit.map-target { cursor: pointer; }
+.mapping .knob-unit.map-target .dial-wrap::after {
+  content: ''; position: absolute; inset: -5px; border-radius: 50%; border: 1px dashed var(--rust);
+  pointer-events: none; animation: tring-pulse 1.1s ease-in-out infinite;
+}
+.mapping .module { transition: opacity var(--t-fast) var(--ease); }
+.mapping .port.map-target .port-jack { box-shadow: 0 0 0 2px var(--card), 0 0 0 3px var(--rust); animation: map-pulse 1.1s ease-in-out infinite; }
+@keyframes map-pulse { 50% { box-shadow: 0 0 0 2px var(--card), 0 0 0 3px transparent; } }
+.ctx-menu {
+  position: fixed; z-index: 200; min-width: 160px; padding: 4px 0; background: var(--card);
+  border: .5px solid var(--graph); border-radius: 6px; box-shadow: 0 2px 10px rgba(0,0,0,.08);
+}
+.ctx-item {
+  display: block; width: 100%; text-align: left; border: 0; background: none; padding: 6px 12px;
+  font: 500 10px var(--mono); letter-spacing: .04em; color: var(--ink); cursor: pointer;
+}
+.ctx-item:hover { background: var(--card2); }
+
 /* ---- knob, tiers L / M / S (DESIGN §4.1) ------------------------------ */
 .knob-unit { position: relative; display: inline-flex; flex-direction: column; align-items: center; user-select: none; touch-action: none; }
 .dial-wrap { position: relative; flex: none; }

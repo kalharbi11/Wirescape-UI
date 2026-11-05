@@ -116,7 +116,12 @@ export class Panel {
       case 'segmented': return new Segmented({ param: named, moduleId, getValue: get, setValue: v => set(v) });
       case 'select': return new Selector({ param: named, moduleId, getValue: get, setValue: v => set(v) });
       case 'toggle': return new Toggle({ param: named, moduleId, getValue: get, setValue: v => set(v) });
-      case 'number': return new NumberBox({ param: named, moduleId, getValue: get, setValue: set });
+      case 'number': {
+        const nb = new NumberBox({ param: named, moduleId, getValue: get, setValue: set });
+        // A number in the hero role (e.g. tempo) is drawn large, like the kit's clock (DESIGN §4.2).
+        if (L.roles[p.id] === 'hero') nb.root.classList.add('big');
+        return nb;
+      }
       case 'fader': return new Fader({ param: named, moduleId, getValue: get, setValue: set, ticker: this.host.ticker });
       case 'readout': {
         const root = el('div', 'control-number static');

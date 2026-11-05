@@ -81,3 +81,14 @@ The branch `claude/new-session-p817y1` (phases 1–3, old look) was merged onto 
 | 21 | tests | 23 session tests | two adjusted for geometry and new classes only: the Delete-cable test clicks a point on the curve (a sagging cable's bounding-box centre is off the path); the catalogue test counts `.control-fader` and `.control-number` as controls. New `tests/kit-controls.spec.ts` (12 tests) covers the kit controls | |
 
 Rejected outright (don't revive without asking): ghost needle, comet trail, histogram, value band, inner scope, range ruler, inside-cap readout, leader-line popups as value readouts, history mesh, pill pairs with contour labels, serif display type, periodic-vs-chaotic knob demo, colour-coded cables, the grey display box, the per-source modulation arcs.
+
+## Phase 3.5 owner review (2026-11-05)
+
+| note | applied as |
+|---|---|
+| Cables vanish where they go behind a module | cables leave and enter every node horizontally before bending (DESIGN §9), so the end at the node is always visible |
+| Filter has no cutoff/resonance nodes although they can be modulated | parameter nodes on the left rail: essentials always (VCF cutoff + resonance), others appear once mapped (DESIGN §7) |
+| How to map (Ableton-like) | right-click an output → Map to a parameter… → targets pulse → click; or right-click a knob → Map from a source… |
+| Too many nodes (CC to CV, MIDI to CV, Macro Osc) | rails with > 5 ports collapse to 4 + connected, with `− n/N +`; CC to CV labels take a typed CC number (needs an engine parameter, flagged) |
+| LFO: no vertical rust line | phase dot only, on the dot grid |
+| Revise the reskin's design | headers no longer repeat the code (`VCF Filter`); horizontal output meters with a dB scale; Clock leads with a large tempo number, duty + ticks/beat below; LFO controls regrouped (rate; depth · beats · offset; sync); CC to CV card height follows its collapsed rail |
