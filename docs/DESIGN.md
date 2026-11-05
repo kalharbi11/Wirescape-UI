@@ -199,7 +199,7 @@ Each module type keeps its own size (no grid), but the size comes from data.
 
 - **Width** is derived: input gutter + output gutter + the widest row of controls (or the widest pane; in a `wide` card, pane + controls), plus 12 px padding per side. The header must also fit. The override key `width` replaces it. Gutters are sized from the longest port label: 22 + 5.6 px per character, at most 132 px, 14 px with no ports.
 - **Height is measured once**, after the card is in the DOM, because the controls are content-sized. Measuring is batched for a whole patch (Pi rule 8). Port anchors are then derived from that height and never read again. A minimum height keeps the port pitch.
-- **Ports** sit on side rails and are spread evenly over the card height. `HEADER_H` = 30 px. Minimum port pitch 30 px (mouse), 42 px (touch). Minimum height = `HEADER_H` + (port rows + 1) × pitch.
+- **Ports** sit on side rails and are spread evenly over the card height. `HEADER_H` = 36 px (raised from 30 in the owner review so header controls clear the border); the body has 22 px padding above and 24 px below the controls. Minimum port pitch 30 px (mouse), 42 px (touch). Minimum height = `HEADER_H` + (port rows + 1) × pitch.
 - Control footprints used for the width: knob L 150, M 84, S 58 px; fader 46; select 150; item gap 10.
 - Fonts (IBM Plex, `@fontsource`, latin 400/500/600) are bundled so the Pi works offline. Boot waits for them because heights are measured.
 - A test checks every module in both hit profiles for overflow.

@@ -68,7 +68,7 @@ export interface ResolvedLayout {
 }
 
 /* ---- geometry (recorded in DESIGN.md "Card sizing") -------------------- */
-export const HEADER_H = 30;
+export const HEADER_H = 36;
 const CORE_PAD_X = 12;
 const CORE_MIN_W = 150;
 const ITEM_GAP = 10;
