@@ -115,3 +115,9 @@ cost. This fixture contains more continuously redrawn filters than the earlier a
 sample, so the tables are not a before/after comparison. None of these are Pi
 hardware measurements; OPEN-5 remains open. Screenshots and a WebM recording are
 uploaded with CI's `browser-review-and-traces` artifact, never committed.
+
+## Phase 7 UI-only Raspberry Pi hardware baseline (pending)
+
+A separate UI-only Pi pretest is planned in [PI_UI_TEST_PLAN.md](PI_UI_TEST_PLAN.md). **No valid headed physical Pi FPS result has been recorded yet.** An earlier assigned runner job was cancelled before any setup steps; hosted/cloud Chromium measures are not hardware evidence.
+
+Before closing OPEN-5: extend the existing 120-frame timing sample to sustained post-warmup Pi intervals; add p95/p99 and long-frame pacing metrics, a signal-bearing VCO/Mixer/Output fake UI workload in addition to 20-module/40-cable modulation stress, separate watchdog checking, actual GPU/backend/display resolution/DPR/refresh and read-only thermal/load context. Target remains ≥30 actual Pi UI FPS with acceptable frame pacing. Record the exact tested SHA, runtime/conditions, results and run link. **Native engine contention is a separate Phase 8 benchmark.**
