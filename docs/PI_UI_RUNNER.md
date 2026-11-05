@@ -1,14 +1,13 @@
-# Pi UI validation
+# Phase 7 — dedicated Raspberry Pi UI pretest runner
+
+**Scope:** Headed Chromium/FakeEngine UI-only checks before Phase 8 native integration. This is the UI repository's dedicated runner, not the main `wirescape` native engine runner. No real sound/DSP/MIDI/OSC hardware validation is claimed.
 
 Runner: `pi-ui`. Required labels: `self-hosted`, `Linux`, `ARM64`, `pi`, `ui`, `pi5`.
 The `pi-ui` job in Pi UI checks runs the browser suite with system Chromium **headed**,
 then records the 20-module/40-cable fixture at fit and 100% in Normal and Pi profiles.
 No audio engine, real MIDI/OSC, SSH, sudo or system-package installation is involved.
 
-Pi testing is paused at the owner's request. There are no automatic PR/push
-triggers. After this workflow reaches the default branch and the owner reconnects
-the monitor, resume with Actions → Pi UI checks → Run workflow as the repository
-owner on `main`. Other actors/refs are skipped. Already-dispatched runs must be
+There are deliberately no automatic PR/push hardware triggers. Once the cumulative Phases 3.5–6 implementation **and Phase 7 test-harness updates are on `main`**, and the owner has connected the display, use Actions → Pi UI checks → Run workflow as the repository owner on `main`. Other actors/refs are skipped. Already-dispatched runs must be
 cancelled separately in Actions; changing triggers does not cancel them.
 The job uses read-only repository permissions and does not persist checkout credentials.
 
@@ -42,11 +41,11 @@ p95 frame interval, visibility/focus, smoothed telemetry-application cost and th
 The job checks the ≥30FPS UI target in both profiles/views. Hosted cloud results
 remain separate. Inspect renderer/display details and the exact revision before
 recording results in PERFORMANCE.md and closing OPEN-5. This does not validate
-real audio contention or latency; those belong to phase7 in `wirescape`.
+real audio contention or latency; those belong to **Phase 8** in `wirescape`.
 
 Hosted UI checks run independently, so an unavailable physical runner cannot block
 the normal hosted regression job. Physical Pi runs serialize across revisions.
 
-The staged runbook and read-only comparison with the main repo are in
-[PI_UI_TEST_PLAN.md](PI_UI_TEST_PLAN.md). Pi testing remains unrun until connected;
-the owner allows future autorun, but current manual triggering is retained.
+The current acceptance checklist, including Phase 7 fixes required before final benchmarking, is [PI_UI_TEST_PLAN.md](PI_UI_TEST_PLAN.md). Phase 7 currently requires longer Pi-only frame samples (15–30 seconds per condition), a second **signal-bearing FakeEngine** fixture, pacing/renderer/thermal context and a separate slow-device watchdog check; the existing 120-frame sample does not certify sustained Pi performance. Align per-test and job timeouts before extending the test. No physical Pi acceptance has been reported; the manual owner-only trigger is retained.
+
+**Git branch reminder:** PR #6 was merged into intermediate `phase/5-system`, while `main` currently includes only through Phase 3.5. The Phase 7 branch is based on the cumulative Phase 6 merge. Review/merge the cumulative implementation into `main` before interpreting any main-only hardware run.
