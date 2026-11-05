@@ -352,6 +352,32 @@ tests/        session.spec.ts, kit-controls.spec.ts, helpers.ts
 reference/    the brief and the first visual sketch
 ```
 
+## 17. System (phase 5)
+
+Everything here runs against the fake engine; the real engine fills the same fields.
+
+**Status bar** (bottom): audio state chip (`STARTING`, `RUNNING`, `NO DEVICE`, `DEVICE LOST`, `RECONNECTING`); device · sample rate · buffer · latency; CPU % (rust above 80); dropouts (rust above 0); BPM and run/stop when a Clock exists; OSC chip `OSC 9000 · LOCAL` while OSC is on (rust `NETWORK` when it accepts from the network); one chip per MIDI device with an activity dot; PANIC; SETTINGS.
+
+**Toasts for changes under the user:** a MIDI device connected or disconnected; the audio device lost ("reconnecting when it returns"), no device, and "Audio is back".
+
+**Settings**, grouped:
+
+| group | items |
+|---|---|
+| Audio | output device, sample rate (the device's rates), buffer size (latency follows) |
+| MIDI | each device on/off (all on by default) |
+| OSC | server on/off (off by default), port (1024–65535; anything else is refused and rolled back), allow network (off = localhost only), recent messages (last 8, live) |
+| Interface | motion, performance profile, **switch to Pi when slow** (on by default), hit areas, UI scale, theme, port labels |
+| About | version, build (git sha · date), cores, profile; **Check for updates** (a stub: answers "Up to date" after 0.6 s, nothing leaves the machine) |
+
+On/off settings use the LED latch (OPEN-1 default), the same as panel toggles.
+
+**Pi profile, automatic.** At boot, a device with ≤ 4 cores, ≤ 4 GB or an ARM user agent starts in the Pi profile. At run time, if frames stay below 40 fps for 5 s in a row (tab visible), the profile switches to Pi once per session with a toast. The setting "Switch to Pi when slow" turns this off. The debug panel's "Simulate slow frames" exercises it.
+
+**Contract 2 additions (optional, nothing breaks):** `SystemStatus.osc?: OscStatus`; `EngineClient.setSampleRate?`, `setBufferFrames?`, `setOsc?`. An engine that omits them conforms; the UI hides what's missing.
+
+**Debug panel** (`` ` ``): FPS and frame time; fault switches: unplug audio, plug in a MIDI device, CPU spike, dropouts, refuse edits, OSC traffic, simulate slow frames.
+
 ## 16. Open items
 
 | id | question | current default |

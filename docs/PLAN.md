@@ -55,6 +55,7 @@ patches (port the six from the Qt repo, #187), autosave and recovery, typed valu
 Tests: break it on purpose (rapid undo, paste across zoom, reload mid-drag).
 
 ### Phase 5: system
+**Status (branch `phase/5-system`, stacked on 4):** done: device toasts, sample rate, OSC (on/off, port, allow network, recent-message monitor, status chip), automatic Pi profile on slow frames, update-check stub, build info, LED-latch settings switches, debug switches for OSC traffic and slow frames; 6 tests in `tests/system.spec.ts`. Already there: audio/MIDI status, CPU, dropouts, panic, preferences. **Owner checkpoint B** still open (Pi FPS, OPEN-5).
 Audio, MIDI and OSC status and settings (fake), CPU, panic, preferences, the Pi performance profile
 (automatic on slow devices), the dev panel's fault switches, and a "check for updates" stub.
 **Owner checkpoint B:** record the Pi FPS figures in `DESIGN.md` (OPEN-5).

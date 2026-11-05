@@ -38,6 +38,19 @@ export interface SystemStatus {
   };
   /** Present only while a Clock module exists in the graph. */
   clock?: { bpm: number; running: boolean };
+  /**
+   * Optional (phase 5): OSC server status. An engine without OSC omits it and
+   * the UI hides the OSC settings. `recent` holds the last few messages in.
+   */
+  osc?: OscStatus;
+}
+
+export interface OscStatus {
+  enabled: boolean;
+  port: number;
+  /** Off by default: listen on localhost only. On: accept from the network. */
+  allowNetwork: boolean;
+  recent: { time: number; address: string; args: (number | string)[] }[];
 }
 
 /** Live values, pushed ~30x a second. Only what changed is included. */
@@ -108,4 +121,9 @@ export interface EngineClient {
   selectAudioDevice(id: string): void;
   listMidiDevices(): Promise<Device[]>;
   setMidiEnabled(id: string, on: boolean): void;
+
+  // ---- optional (phase 5): engines may omit these; the UI hides what's missing
+  setSampleRate?(hz: number): void;
+  setBufferFrames?(frames: number): void;
+  setOsc?(cfg: Partial<Pick<OscStatus, 'enabled' | 'port' | 'allowNetwork'>>): void;
 }

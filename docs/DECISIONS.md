@@ -104,3 +104,14 @@ Rejected outright (don't revive without asking): ghost needle, comet trail, hist
 | clipboard | in-app plus `localStorage` (`wirescape.clipboard.v1`), not the system clipboard: works across reloads and patches without a permission prompt |
 | typed values | one parser for all controls; a bare number is in the parameter's own unit, except a percentage (read as shown) |
 | Qt starters (#187) | not ported: the Qt repo was not reachable from this session |
+
+## Phase 5 (2026-11-05): system
+
+| topic | decision |
+|---|---|
+| card padding (owner) | header 30 → 36 px; body 12/14 → 22/24 px top/bottom; sides unchanged |
+| OSC | off by default, localhost only by default; port range 1024–65535, refusals roll back with a toast; recent-message monitor in Settings |
+| engine contract | only optional additions (`osc?`, `setSampleRate?`, `setBufferFrames?`, `setOsc?`) so a real engine without them still conforms |
+| automatic Pi profile | boot sniff (cores, memory, ARM) plus a run-time watchdog (< 40 fps for 5 s, once a session), user can turn it off |
+| update check | a stub that never touches the network |
+| settings switches | LED latch, as the panels (OPEN-1 default) |
