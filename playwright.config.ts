@@ -12,11 +12,14 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   fullyParallel: false,
   workers: 1,
-  reporter: [['list']],
+  reporter: process.env.WIRESCAPE_PI_RUN === '1'
+    ? [['list'], ['json', { outputFile: 'build_reports/pi-ui/playwright.json' }]] : [['list']],
+  metadata: { piRun: process.env.WIRESCAPE_PI_RUN === '1' },
   use: {
     baseURL: 'http://localhost:4173',
+    headless: process.env.WIRESCAPE_HEADED !== '1',
     trace: 'retain-on-failure',
-    launchOptions: { executablePath, args: ['--no-sandbox'] },
+    launchOptions: { executablePath, args: ['--no-sandbox', ...(process.env.WIRESCAPE_WAYLAND === '1' ? ['--ozone-platform=wayland'] : [])] },
   },
   projects: [
     {
