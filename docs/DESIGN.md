@@ -262,14 +262,26 @@ Knob tiers: hero L, primary and secondary M, trim S. Auto sections have no label
 | Knob: wheel | ±0.02 travel (±0.004 with shift) |
 | Knob: arrows | ±0.01 travel (±0.002 with shift); PageUp/Down ±0.1; Home/End to the ends |
 | Knob: double-click | reset to the default |
-| Knob readout: click | type a value |
+| Knob readout, number box, fader value: click | type a value. It starts from what's shown (`1.2 kHz`) and accepts `2k`, `1.2 kHz`, `A4` (Hz), `350 ms`, `1.5 s`, `-6`, `40%` or a choice label. A bare number is in the parameter's own unit, except a percentage, which reads as shown (`40` means 40%). Nonsense is ignored |
 | Knob: no modulation handle | the depth is edited on the selected cable |
 | Header KNOBS / GRAPH (VCF) | graph: drag the peak for cutoff + resonance; the card keeps its height |
 | Envelope handles | hollow, draggable on the display; ADSR stages also as number boxes below |
 | Number box: drag sideways | 0.004 of travel per px |
 | Number box: click | type a value; arrows ±0.01 (shift ±0.002); double-click resets |
-| Fader: drag | moves the thumb; wheel and arrows nudge (shift finer); Home/End to the ends; double-click resets; no typing yet (OPEN-8) |
+| Fader: drag | moves the thumb; wheel and arrows nudge (shift finer); Home/End to the ends; double-click resets; click the value to type |
 | Segmented, toggle, select | click |
+
+**Editing (phase 4).**
+
+| action | keys / control | behaviour |
+|---|---|---|
+| Undo | Ctrl/Cmd + Z, top-bar ↶ | back one step, all the way to an empty canvas; the view stays where it is |
+| Redo | Ctrl/Cmd + Shift + Z, Ctrl + Y, top-bar ↷ | forward one step; any new edit clears the redo stack |
+| Copy / cut | Ctrl/Cmd + C / X | the selected modules, their parameters, labels, extra fields, and the cables *between* them (with colours); kept in `localStorage`, so paste works after a reload and in another patch |
+| Paste | Ctrl/Cmd + V | new instance ids; cascades +40 px per paste; if the originals are off screen, lands in the middle of the view; unknown module types are skipped with a toast; the pasted group is selected |
+| Duplicate | Ctrl/Cmd + D | copy + paste in one step |
+
+**What one undo step is** (`src/patch/History.ts`): history is snapshot-based (the patch minus the view, up to 200 steps). Changes made while a pointer is down are committed on pointerup, so a whole knob drag, module drag, cable drop, stereo pair or mapping click is one step. Other changes (keys, typed values, paste, delete) are committed after 350 ms of quiet, so holding an arrow key is one step too. Loading or starting a patch, and restoring the autosave, starts a fresh history. Undo rebuilds the cards from the snapshot (one `reset`) and reloads the engine graph through `loadGraph`.
 
 **Replace or add:** a signal input takes one cable; a second drop replaces the first; shift-drop adds. The PLAN default for Q-B is "add (sum)"; this is still to be confirmed.
 
@@ -351,7 +363,7 @@ reference/    the brief and the first visual sketch
 | OPEN-5 | Pi measurements of the kit (FPS, ms per frame) | not measured yet; see PERFORMANCE.md |
 | OPEN-6 | which stock modules are `wide` | VCF offers both; others tall |
 | OPEN-7 | the Clock card was not reviewed in round 2 | as in round 1 |
-| OPEN-8 | typed value entry on click (brief) | typed entry exists on knob readouts and number boxes (from the branch); no typing on faders yet |
+| ~~OPEN-8~~ | typed value entry on click (brief) | **done in phase 4**: knobs, number boxes and faders share one parser (`parseTyped`) |
 | OPEN-9 | modulation maths: does the real engine sum in knob space (§10)? saved amounts depend on it | knob space |
 | OPEN-10 | stereo pairing is positional (Nth stereo output to Nth stereo input); the catalogue marks `stereo_pair: "stereo"` without naming L/R. A real group id would be better | declaration order |
 | OPEN-11 | poly cable weight: moot. Cable weight no longer depends on kind or poly (§9). Whether `poly` on a port is static or the runtime voice count is still unanswered | not used by the UI |

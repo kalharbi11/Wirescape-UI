@@ -93,3 +93,14 @@ Rejected outright (don't revive without asking): ghost needle, comet trail, hist
 | LFO: no vertical rust line | phase dot only, on the dot grid |
 | Revise the reskin's design | headers no longer repeat the code (`VCF Filter`); horizontal output meters with a dB scale; Clock leads with a large tempo number, duty + ticks/beat below; LFO controls regrouped (rate; depth · beats · offset; sync); CC to CV card height follows its collapsed rail |
 | Cable shape was inconsistent (hook in the middle, too straight at some ends) | one cubic per cable, near level at both nodes, droop capped by the reach; the owner approved the short loop into a gate and the curl into an input from below |
+
+## Phase 4 (2026-11-05): editing
+
+| topic | decision |
+|---|---|
+| undo model | snapshots of the patch (minus the view) per gesture, not per-feature inverse commands: every edit is undoable with no extra code; the cost is a `JSON.stringify` of the patch per step (well under 1 ms at 20 modules) and a card rebuild per undo |
+| step boundaries | pointer gestures commit on pointerup; everything else after 350 ms of quiet |
+| view | not part of history (undo never moves the camera) |
+| clipboard | in-app plus `localStorage` (`wirescape.clipboard.v1`), not the system clipboard: works across reloads and patches without a permission prompt |
+| typed values | one parser for all controls; a bare number is in the parameter's own unit, except a percentage (read as shown) |
+| Qt starters (#187) | not ported: the Qt repo was not reachable from this session |

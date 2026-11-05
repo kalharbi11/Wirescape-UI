@@ -2,6 +2,7 @@ import { connKey } from './../patch/types';
 import { ModuleRegistry, findParam, findPort } from '../modules/registry';
 import { PanelOverrides } from '../panels/layouts';
 import { PatchDoc } from '../patch/PatchDoc';
+import { History } from '../patch/History';
 import type { Connection, PatchV2 } from '../patch/types';
 import { FakeEngine } from '../engine/FakeEngine';
 import { EngineRefusal, type SystemStatus } from '../engine/EngineClient';
@@ -20,6 +21,11 @@ import { loadPrefs, savePrefs, applyPrefs, detectSlowDevice, type Preferences } 
 import { el } from './dom';
 
 const AUTOSAVE_KEY = 'wirescape.autosave.v2';
+/** Copied modules survive a reload and a patch change, so paste works between patches. */
+const CLIPBOARD_KEY = 'wirescape.clipboard.v1';
+
+interface ClipModule { id: number; module: string; parameters: Record<string, number>; pos: [number, number]; label?: string; extra: Record<string, unknown> }
+interface Clip { modules: ClipModule[]; connections: Connection[]; colors: Record<string, string> }
 
 export class App {
   readonly root: HTMLElement;
@@ -43,6 +49,11 @@ export class App {
   private octaveEl!: HTMLElement;
   private lastStatus: SystemStatus | null = null;
   private fileInput!: HTMLInputElement;
+  private history!: History;
+  private undoBtn!: HTMLButtonElement;
+  private redoBtn!: HTMLButtonElement;
+  private clip: Clip | null = null;
+  private pasteCount = 0;
 
   constructor(
     private readonly registry: ModuleRegistry,
@@ -185,6 +196,12 @@ export class App {
     this.canvas.viewport.on(v => { this.zoomLabel.textContent = `${Math.round(v.s * 100)}%`; });
 
     const tools = el('div', 'toolbar');
+    this.undoBtn = this.action('↶', () => this.undo(), 'undo');
+    this.redoBtn = this.action('↷', () => this.redo(), 'redo');
+    this.undoBtn.title = 'Undo (Ctrl/Cmd + Z)';
+    this.redoBtn.title = 'Redo (Ctrl/Cmd + Shift + Z)';
+    const history = el('div', 'zoom-group history-group');
+    history.append(this.undoBtn, this.redoBtn);
     tools.append(
       this.action('NEW', () => this.newPatch(), 'new-patch'),
       this.action('OPEN', () => this.fileInput.click(), 'open-patch'),
@@ -192,7 +209,7 @@ export class App {
       this.action('?', () => this.shortcuts.open('Keyboard shortcuts'), 'shortcuts-btn'),
     );
 
-    right.append(starters, this.octaveEl, zoomGroup, tools);
+    right.append(starters, this.octaveEl, history, zoomGroup, tools);
     bar.append(left, right);
     return bar;
   }
@@ -208,6 +225,8 @@ export class App {
   // ---- startup ----------------------------------------------------------
 
   private async startup(): Promise<void> {
+    this.history = new History(this.doc, p => this.restoreSnapshot(p));
+    this.history.onChange(() => this.refreshHistory());
     this.ticker.throttleHz = this.prefs.profile === 'pi' ? 30 : 0;
     this.ticker.start();
     this.engine.onTelemetry(t => this.ticker.push(t));
@@ -256,6 +275,126 @@ export class App {
     requestAnimationFrame(() => this.canvas.invalidateAnchors());
     this.doc.markClean();
     this.refreshDirty();
+    this.history?.reset();
+    this.pasteCount = 0;
+  }
+
+  // ---- undo / redo --------------------------------------------------------
+
+  undo(): void {
+    if (!this.history.undo()) { this.toasts.show('Nothing to undo.'); return; }
+  }
+
+  redo(): void {
+    if (!this.history.redo()) { this.toasts.show('Nothing to redo.'); return; }
+  }
+
+  /** Put a history snapshot back, keeping the view where it is. */
+  private restoreSnapshot(p: PatchV2): void {
+    const view = this.doc.ui.view;
+    this.canvas.select({ kind: 'none' });
+    this.doc.replace({ ...p, ui: { ...(p.ui ?? {}), view } });
+    void this.engine.loadGraph(this.doc.toJSON());
+    requestAnimationFrame(() => this.canvas.invalidateAnchors());
+    this.refreshDirty();
+  }
+
+  private refreshHistory(): void {
+    this.undoBtn.disabled = !this.history.canUndo;
+    this.redoBtn.disabled = !this.history.canRedo;
+  }
+
+  // ---- copy / paste --------------------------------------------------------
+
+  private copySelection(): boolean {
+    const s = this.canvas.currentSelection;
+    if (s.kind !== 'modules' || !s.ids.length) return false;
+    const ids = new Set(s.ids);
+    const modules: ClipModule[] = s.ids.map(id => {
+      const m = this.doc.modules.get(id)!;
+      const { id: _id, module, parameters, ...extra } = m as typeof m & Record<string, unknown>;
+      return { id, module, parameters: { ...(parameters ?? {}) }, pos: this.doc.position(id), label: this.doc.label(id), extra };
+    });
+    const connections = this.doc.connections
+      .filter(c => ids.has(c.from.module) && ids.has(c.to.module))
+      .map(c => JSON.parse(JSON.stringify(c)) as Connection);
+    const colors: Record<string, string> = {};
+    for (const c of connections) { const col = this.doc.cableColor(connKey(c)); if (col) colors[connKey(c)] = col; }
+    this.clip = { modules, connections, colors };
+    this.pasteCount = 0;
+    try { localStorage.setItem(CLIPBOARD_KEY, JSON.stringify(this.clip)); } catch { /* storage unavailable */ }
+    return true;
+  }
+
+  private copy(): void {
+    const s = this.canvas.currentSelection;
+    if (!this.copySelection()) { this.toasts.show('Select modules to copy.'); return; }
+    const n = s.kind === 'modules' ? s.ids.length : 0;
+    this.toasts.show(`Copied ${n} module${n > 1 ? 's' : ''}.`);
+  }
+
+  private cut(): void {
+    if (!this.copySelection()) { this.toasts.show('Select modules to cut.'); return; }
+    this.deleteSelection();
+  }
+
+  private duplicate(): void {
+    if (!this.copySelection()) { this.toasts.show('Select modules to duplicate.'); return; }
+    this.paste();
+  }
+
+  /**
+   * Paste the clipboard: new instance ids, cables between pasted modules
+   * kept (with their colours), and a cascade offset so repeated pastes don't
+   * stack. If the originals are off screen, the group lands in the middle
+   * of the view.
+   */
+  paste(): void {
+    let clip = this.clip;
+    if (!clip) {
+      try { clip = JSON.parse(localStorage.getItem(CLIPBOARD_KEY) ?? 'null') as Clip | null; } catch { clip = null; }
+    }
+    if (!clip?.modules.length) { this.toasts.show('Nothing to paste.'); return; }
+    this.pasteCount++;
+    const xs = clip.modules.map(m => m.pos[0]), ys = clip.modules.map(m => m.pos[1]);
+    const minX = Math.min(...xs), minY = Math.min(...ys), maxX = Math.max(...xs), maxY = Math.max(...ys);
+    const r = this.canvas.viewport.rect();
+    const tl = this.canvas.viewport.toWorld(r.left, r.top), br = this.canvas.viewport.toWorld(r.right, r.bottom);
+    const visible = minX < br.x && maxX > tl.x && minY < br.y && maxY > tl.y;
+    let dx = 40 * this.pasteCount, dy = 40 * this.pasteCount;
+    if (!visible) {
+      const cx = (tl.x + br.x) / 2, cy = (tl.y + br.y) / 2;
+      dx = cx - (minX + maxX) / 2 - 150 + 24 * (this.pasteCount - 1);
+      dy = cy - (minY + maxY) / 2 - 100 + 24 * (this.pasteCount - 1);
+    }
+    const map = new Map<number, number>();
+    const skipped: string[] = [];
+    for (const m of clip.modules) {
+      const id = this.doc.nextId();
+      try { this.engine.addModule(id, m.module, m.parameters); }
+      catch { skipped.push(m.module); continue; }
+      this.doc.addModule(m.module, m.parameters, m.pos[0] + dx, m.pos[1] + dy, id);
+      const added = this.doc.modules.get(id);
+      if (added) Object.assign(added, m.extra);
+      if (m.label) this.doc.setLabel(id, m.label);
+      map.set(m.id, id);
+    }
+    for (const c of clip.connections) {
+      const from = map.get(c.from.module), to = map.get(c.to.module);
+      if (from === undefined || to === undefined) continue;
+      const nc: Connection = { ...c, from: { ...c.from, module: from }, to: { ...c.to, module: to } };
+      if (this.doc.has(nc)) continue;
+      this.doc.connect(nc);
+      try { this.engine.connect(nc); } catch { this.doc.disconnect(nc); continue; }
+      const col = clip.colors[connKey(c)];
+      if (col) this.doc.setCableColor(connKey(nc), col);
+    }
+    const ids = [...map.values()];
+    this.canvas.select(ids.length ? { kind: 'modules', ids } : { kind: 'none' });
+    this.canvas.invalidateAnchors();
+    this.toasts.show(skipped.length
+      ? `Pasted ${ids.length}; ${skipped.length} unknown module${skipped.length > 1 ? 's' : ''} skipped.`
+      : `Pasted ${ids.length} module${ids.length > 1 ? 's' : ''}.`);
   }
 
   private newPatch(): void {
@@ -483,6 +622,12 @@ export class App {
       if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); this.exportPatch(); return; }
       if (mod && e.key.toLowerCase() === 'o') { e.preventDefault(); this.fileInput.click(); return; }
       if (mod && e.key.toLowerCase() === 'a') { e.preventDefault(); this.canvas.selectAll(); return; }
+      if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) this.redo(); else this.undo(); return; }
+      if (mod && e.key.toLowerCase() === 'y') { e.preventDefault(); this.redo(); return; }
+      if (mod && e.key.toLowerCase() === 'c') { e.preventDefault(); this.copy(); return; }
+      if (mod && e.key.toLowerCase() === 'x') { e.preventDefault(); this.cut(); return; }
+      if (mod && e.key.toLowerCase() === 'v') { e.preventDefault(); this.paste(); return; }
+      if (mod && e.key.toLowerCase() === 'd') { e.preventDefault(); this.duplicate(); return; }
       if (mod && e.key.toLowerCase() === 'f') { e.preventDefault(); this.library.focusSearch(); return; }
       if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); this.deleteSelection(); return; }
       if (e.key === 'Escape') { this.canvas.select({ kind: 'none' }); this.root.classList.remove('library-open'); return; }
@@ -510,6 +655,11 @@ export class App {
       ['A–L, W, E, T, Y, U, O, P', 'Play notes'],
       ['Z / X', 'Octave down / up'],
       ['Delete', 'Remove the selection'],
+      ['Ctrl/Cmd + Z', 'Undo'],
+      ['Ctrl/Cmd + Shift + Z, Ctrl + Y', 'Redo'],
+      ['Ctrl/Cmd + C / X / V', 'Copy / cut / paste modules (also between patches)'],
+      ['Ctrl/Cmd + D', 'Duplicate the selection'],
+      ['Right-click an output', 'Map it to a parameter'],
       ['Ctrl/Cmd + A', 'Select all'],
       ['Ctrl/Cmd + S', 'Save the patch'],
       ['Ctrl/Cmd + O', 'Open a patch'],
@@ -633,6 +783,13 @@ export class App {
         try { this.engine.connect(c); } catch (e) { this.doc.disconnect(c); throw e; }
       },
       deleteSelection: () => this.deleteSelection(),
+      undo: () => this.undo(),
+      redo: () => this.redo(),
+      flushHistory: () => this.history.flush(),
+      historyDepth: () => this.history.depth,
+      copy: () => this.copy(),
+      paste: () => this.paste(),
+      duplicate: () => this.duplicate(),
       select: (s: Selection) => this.canvas.select(s),
       noteOn: (n: number, v = 0.8) => this.engine.noteOn(n, v),
       noteOff: (n: number) => this.engine.noteOff(n),

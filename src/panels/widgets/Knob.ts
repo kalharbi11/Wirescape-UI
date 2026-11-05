@@ -2,7 +2,7 @@ import type { ModuleParam } from '../../modules/types';
 import type { Connection } from '../../patch/types';
 import type { Ticker } from '../../runtime/Ticker';
 import type { KnobTier } from '../layouts';
-import { formatValue, formatRange, normToValue, valueToNorm, quantize } from '../../modules/registry';
+import { formatValue, formatRange, normToValue, valueToNorm, parseTyped, displayValue } from '../../modules/registry';
 import { el, svgEl } from '../../app/dom';
 import { attachParamInfo, type InfoSource } from './InfoBox';
 
@@ -313,7 +313,7 @@ export class Knob {
   private promptValue(): void {
     const p = this.o.param;
     const input = el('input', 'readout-input') as HTMLInputElement;
-    input.value = String(round(this.o.getValue()));
+    input.value = displayValue(p, this.o.getValue());
     input.dataset.testid = `readout-input-${this.o.moduleId}-${p.id}`;
     input.setAttribute('aria-label', `${p.name} value`);
     this.readout.replaceWith(input);
@@ -323,8 +323,8 @@ export class Knob {
       if (done) return;
       done = true;
       if (apply) {
-        const v = Number(input.value.replace(/−/g, '-').replace(/[^0-9eE+\-.]/g, ''));
-        if (Number.isFinite(v)) this.o.setValue(quantize(p, v), true);
+        const v = parseTyped(p, input.value, this.o.getValue());
+        if (v !== null) this.o.setValue(v, true);
       }
       input.replaceWith(this.readout);
       this.refresh();

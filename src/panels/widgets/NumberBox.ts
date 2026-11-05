@@ -1,5 +1,5 @@
 import type { ModuleParam } from '../../modules/types';
-import { formatValue, normToValue, quantize, valueToNorm } from '../../modules/registry';
+import { formatValue, normToValue, quantize, valueToNorm , parseTyped, displayValue } from '../../modules/registry';
 import { el } from '../../app/dom';
 
 export interface NumberBoxOptions {
@@ -115,7 +115,7 @@ export class NumberBox {
   private promptValue(): void {
     const p = this.o.param;
     const input = el('input', 'readout-input') as HTMLInputElement;
-    input.value = String(Math.round(this.o.getValue() * 1e6) / 1e6);
+    input.value = displayValue(p, this.o.getValue());
     input.dataset.testid = `readout-input-${this.o.moduleId}-${p.id}`;
     input.setAttribute('aria-label', `${p.name} value`);
     const shown = this.value;
@@ -126,8 +126,8 @@ export class NumberBox {
       if (done) return;
       done = true;
       if (apply) {
-        const v = Number(input.value.replace(/[^0-9eE+\-.]/g, ''));
-        if (Number.isFinite(v) && input.value.trim() !== '') this.o.setValue(quantize(p, v), true);
+        const v = parseTyped(p, input.value, this.o.getValue());
+        if (v !== null) this.o.setValue(v, true);
       }
       input.replaceWith(shown);
       this.refresh();
