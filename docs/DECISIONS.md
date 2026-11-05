@@ -115,3 +115,19 @@ Rejected outright (don't revive without asking): ghost needle, comet trail, hist
 | automatic Pi profile | boot sniff (cores, memory, ARM) plus a run-time watchdog (< 40 fps for 5 s, once a session), user can turn it off |
 | update check | a stub that never touches the network |
 | settings switches | LED latch, as the panels (OPEN-1 default) |
+
+
+## Phase 6 continuation (2026-11-05)
+
+Owner authorization: assume phase 3.5 approved, preserve its design language, finish phases 5 and 6. No further design checkpoint blocks implementation. The existing stacked phase branches remain unmerged pending owner review.
+
+| topic | decision |
+|---|---|
+| signature panels | data overrides plus small reusable `steps`, `models`, `channels` panes; no module branch in the generic builder |
+| sequencer | shared exact-value controls, explicit Rest/Note/Tie, joining bars, actual-length telemetry playhead; values outside length retained |
+| Macro models | numbered values from catalogue; no invented model names or fake waveform preview; responsive keyboard navigation |
+| Mixer/Output | existing faders and meter style; telemetry A/B after gain for Mixer, L/R for Output; Output width derived, no invented output controls |
+| Qt starters | port six fixtures from PR #192 at `96cad1cd7eeef673db6b5cbdcf09d4dc9008ab9d`; keep existing browser demos so their documented session remains reproducible |
+| system audit | optional audio capabilities hidden; no-device safe; device rates refreshed; OSC unsubscribed on close; reduced-motion default matches OS |
+| automation | GitHub Actions installs locked dependencies, typechecks/builds and runs Chromium regression suite; failure traces retained |
+| hardware | OPEN-5 stays open until actual Pi measurements; CHAOS-lite, dark theme and phase 7 remain deferred |

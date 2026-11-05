@@ -396,5 +396,21 @@ On/off settings use the LED latch (OPEN-1 default), the same as panel toggles.
 | OPEN-12 | instance labels are stored in `ui.labels`, keyed by instance id; confirm the real format or name the field | `ui.labels` |
 | OPEN-13 | patch name is stored in `ui.name` by the autosave wrapper; should patch v2 carry a name? | `ui.name` |
 | OPEN-14 | backward cables (target left of source) draw as a wide curve across the canvas; busy in a dense patch. A routing pass that bows them vertically may help | drawn as is |
-| OPEN-15 | `example.step_sequencer` gate parameters are `0=Rest, 1=Note, 2=Tie` with `step: 1`; the placeholder grid cycles three states. The signature panel should show tie as a joining bar | placeholder grid |
+| ~~OPEN-15~~ | `example.step_sequencer` gate parameters are `0=Rest, 1=Note, 2=Tie` with `step: 1`; the placeholder grid cycles three states. The signature panel should show tie as a joining bar | **done in phase 6:** editable pitch/velocity lanes and gate tie bars |
 | OPEN-16 | the CPU figure is faked from the module count; what does the real engine report, DSP load or process CPU? | faked |
+
+
+## 18. Signature panels (phase 6)
+
+The phase-3.5 design is approved for this continuation. All signature panels use the shared controls and catalogue parameters; CHAOS-lite remains generic. `PanelBuilder` has no module-specific branches.
+
+- **Step Sequencer:** eight lanes of dotted NumberBoxes for pitch (octaves) and velocity, and neutral Rest / Note / Tie gate buttons. A tie draws a joining bar. Run uses the LED latch; Length uses an exact number. Shortened sequences dim unused steps without deleting values. The rust playhead uses telemetry phase times the actual sequence length; stopping clears it. Width 800 px fits the lanes at mouse and touch density.
+- **Macro Oscillator:** a numbered model bank follows the catalogue's 0–23 range (no model names are supplied, so none are invented). Harmonics is L; timbre/morph are M; pitch and modulation amounts are S, followed by the LPG group. Arrow keys navigate by the displayed column count, Home/End jump to bounds. Touch uses four columns with 44 px targets. This pane subscribes to no animation loop.
+- **Mixer:** shared A/B gain faders and shared meter ballistics, driven by FakeEngine post-gain channel levels. `Telemetry.meters` stays the same numeric pair: Mixer labels it A/B, Output L/R. Hidden generic controls retain explicit modulation nodes. Effective gains feed both channel meters and the summed output.
+- **Output:** stereo meter and scope remain; width is derived from the display and rail footprints rather than the former 300 px override. The catalogue supplies no Output gain control.
+
+Six original Qt starters from `kalharbi11/wirescape` PR #192, source `96cad1cd7eeef673db6b5cbdcf09d4dc9008ab9d`, are bundled offline alongside the original six browser demos. Source IDs, parameter values, connections, config/settings/output fields and licence text survive. Browser positions are spaced for the larger controls. Real MIDI, polyphony and sound prerequisites are described in the library. This ports fixtures from an unmerged source PR; it does not imply Qt acceptance or merge.
+
+Phase-5 follow-up: audio settings tolerate zero devices, hide unsupported optional setters, refresh sample-rate choices when devices change, and call `setBufferFrames` through the engine contract. Closing Settings releases the OSC listener. An unsaved motion preference honors the OS reduced-motion setting.
+
+Pi checkpoint B / OPEN-5 remains **unmeasured on hardware**. Cloud browser and source validation are not Pi measurements. The real-engine work remains phase 7.

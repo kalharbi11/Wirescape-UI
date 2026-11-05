@@ -26,11 +26,12 @@ export const DEFAULT_PREFS: Preferences = {
 };
 
 export function loadPrefs(): Preferences {
+  const defaults = { ...DEFAULT_PREFS, motion: !matchMedia('(prefers-reduced-motion: reduce)').matches };
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return { ...DEFAULT_PREFS, ...JSON.parse(raw) };
+    if (raw) return { ...defaults, ...JSON.parse(raw) };
   } catch { /* storage unavailable — fall through to defaults */ }
-  return { ...DEFAULT_PREFS };
+  return defaults;
 }
 
 export function savePrefs(p: Preferences): void {
@@ -60,3 +61,4 @@ export function detectSlowDevice(): boolean {
   const arm = /aarch64|arm/i.test(navigator.userAgent);
   return cores <= 4 || mem <= 4 || arm;
 }
+

@@ -1,0 +1,58 @@
+import { test, expect } from '@playwright/test';
+import { STARTERS, DEFAULT_STARTER } from '../src/app/starters';
+import catalogue from '../public/wirescape_modules.json';
+import { boot, settle } from './helpers';
+
+const qt = STARTERS.filter(s => s.id.startsWith('qt-'));
+
+test('six Qt starters retain native data and use valid catalogue endpoints', () => {
+  expect(qt).toHaveLength(6);
+  expect(DEFAULT_STARTER.id).toBe('keyboard-voice');
+  for (const starter of qt) {
+    const patch = starter.patch();
+    expect(patch['SPDX-License-Identifier']).toBe('GPL-3.0-only');
+    expect(patch.settings).toHaveProperty('seed', 42);
+    expect(patch.outputs).toHaveLength(1);
+    const types = new Map(patch.modules.map(m => [m.id, catalogue.modules.find(d => d.id === m.module)!]));
+    for (const module of patch.modules) {
+      const descriptor = types.get(module.id);
+      expect(descriptor, module.module).toBeDefined();
+      for (const [id, value] of Object.entries(module.parameters ?? {})) {
+        const param = descriptor!.parameters.find(p => p.id === id);
+        expect(param, `${module.module}:${id}`).toBeDefined();
+        expect(value).toBeGreaterThanOrEqual(param!.minimum);
+        expect(value).toBeLessThanOrEqual(param!.maximum);
+      }
+      expect(patch.ui?.positions?.[String(module.id)]).toHaveLength(2);
+    }
+    for (const connection of patch.connections) {
+      const from = types.get(connection.from.module)!.ports.find(p => p.direction === 'output' && p.id === connection.from.port);
+      const to = types.get(connection.to.module)!.ports.find(p => p.direction === 'input' && p.id === connection.to.port);
+      expect(from, `${starter.id}: output ${connection.from.port}`).toBeDefined();
+      expect(to, `${starter.id}: input ${connection.to.port}`).toBeDefined();
+      expect(from!.kind).toBe(connection.kind);
+      expect(to!.kind).toBe(connection.kind);
+    }
+    // Each invocation returns an independent document, including native extras.
+    patch.modules[0]!.parameters!.testMutation = 1;
+    expect(starter.patch().modules[0]!.parameters).not.toHaveProperty('testMutation');
+  }
+});
+
+for (const starter of qt) {
+  test(`${starter.id} loads and saves native fields without loss`, async ({ page }) => {
+    const errors: string[] = [];
+    page.on('pageerror', e => errors.push(e.message));
+    await boot(page);
+    const source = starter.patch();
+    await page.evaluate(({ patch, name }) => window.__wirescapeTest.load(patch, name), { patch: source, name: starter.name });
+    await settle(page);
+    const saved = await page.evaluate(() => window.__wirescapeTest.state());
+    // Camera may be fitted by the app; native graph, routing and metadata stay exact.
+    for (const field of ['modules', 'connections', 'outputs', 'settings', 'name', 'SPDX-License-Identifier']) {
+      expect(saved[field]).toEqual(source[field]);
+    }
+    await expect(page.locator('[data-testid^="module-header-"]')).toHaveCount(source.modules.length);
+    expect(errors).toEqual([]);
+  });
+}

@@ -729,31 +729,59 @@ export class App {
   private openSettings(): void {
     this.settings.body.replaceChildren();
     const b = this.settings.body;
+    let stopMonitor: (() => void) | undefined;
 
     b.append(el('h3', 'settings-group', 'Audio'));
+    const audioFields = el('div', 'settings-audio');
+    b.append(audioFields);
     void this.engine.listAudioDevices().then(devices => {
-      const sel = select(
-        devices.map(d => ({ value: d.id, label: d.name })),
-        this.lastStatus?.audio.deviceId ?? devices[0]!.id,
-        v => this.engine.selectAudioDevice(v),
-      );
-      sel.dataset.testid = 'audio-device';
-      const buffer = select(
-        [64, 128, 256, 512, 1024].map(n => ({ value: String(n), label: `${n} frames` })),
-        String(this.lastStatus?.audio.bufferFrames ?? 256),
-        v => this.engine.setBuffer(Number(v)),
-      );
-      buffer.dataset.testid = 'audio-buffer';
-      const dev = devices.find(d => d.id === (this.lastStatus?.audio.deviceId ?? devices[0]!.id));
-      const rates = select(
-        (dev?.sampleRates ?? [48000]).map(n => ({ value: String(n), label: `${(n / 1000).toFixed(1)} kHz` })),
-        String(this.lastStatus?.audio.sampleRate ?? 48000),
-        v => this.engine.setSampleRate?.(Number(v)),
-      );
+      // The dialog may have been rebuilt while device enumeration was pending.
+      if (!b.contains(audioFields)) return;
+      if (!devices.length) {
+        const empty = el('div', 'muted', 'No audio devices available.');
+        empty.dataset.testid = 'audio-no-devices';
+        audioFields.append(empty);
+        return;
+      }
+      const currentId = this.lastStatus?.audio.deviceId ?? devices[0]!.id;
+      const rates = select([], '', v => this.engine.setSampleRate?.(Number(v)));
       rates.dataset.testid = 'audio-rate';
-      b.insertBefore(field('Output device', sel), b.children[1] ?? null);
-      b.insertBefore(field('Sample rate', rates), b.children[2] ?? null);
-      b.insertBefore(field('Buffer size', buffer, 'Lower is tighter, and more likely to drop out'), b.children[3] ?? null);
+      const refreshRates = (deviceId: string) => {
+        const dev = devices.find(d => d.id === deviceId);
+        rates.replaceChildren(...(dev?.sampleRates ?? [48000]).map(n => {
+          const option = document.createElement('option');
+          option.value = String(n); option.textContent = `${(n / 1000).toFixed(1)} kHz`;
+          return option;
+        }));
+        const actual = String(this.lastStatus?.audio.sampleRate ?? 48000);
+        rates.value = actual;
+        // Do not imply an unsupported rate is active; ask the engine to pick it.
+        if (!rates.value && rates.options.length) {
+          rates.selectedIndex = 0;
+          this.engine.setSampleRate?.(Number(rates.value));
+        }
+      };
+      const sel = select(devices.map(d => ({ value: d.id, label: d.name })), currentId, v => {
+        this.engine.selectAudioDevice(v);
+        if (this.engine.setSampleRate) refreshRates(v);
+      });
+      sel.dataset.testid = 'audio-device';
+      audioFields.append(field('Output device', sel));
+      if (this.engine.setSampleRate) {
+        refreshRates(currentId);
+        audioFields.append(field('Sample rate', rates));
+      }
+      if (this.engine.setBufferFrames) {
+        const buffer = select(
+          [64, 128, 256, 512, 1024].map(n => ({ value: String(n), label: `${n} frames` })),
+          String(this.lastStatus?.audio.bufferFrames ?? 256),
+          v => this.engine.setBufferFrames?.(Number(v)),
+        );
+        buffer.dataset.testid = 'audio-buffer';
+        audioFields.append(field('Buffer size', buffer, 'Lower is tighter, and more likely to drop out'));
+      }
+    }).catch(() => {
+      if (b.contains(audioFields)) audioFields.textContent = 'Audio devices could not be listed.';
     });
 
     b.append(el('h3', 'settings-group', 'MIDI'));
@@ -790,13 +818,7 @@ export class App {
           : [el('div', 'osc-line muted', this.lastStatus?.osc?.enabled ? 'Waiting for messages…' : 'OSC is off')]));
       };
       paint();
-      // onStatus calls back at once, before the box is in the dialog; stop listening once it is gone.
-      let seen = false;
-      const off = this.engine.onStatus(() => {
-        if (mon.isConnected) seen = true;
-        else if (seen) { queueMicrotask(() => off()); return; }
-        paint();
-      });
+      stopMonitor = this.engine.onStatus(paint);
       b.append(field('Recent messages', mon));
     }
 
@@ -846,7 +868,7 @@ export class App {
     debug.addEventListener('click', () => { this.settings.close(); this.devPanel.toggle(true); });
     b.append(debug);
 
-    this.settings.open('Settings');
+    this.settings.open('Settings', () => stopMonitor?.());
   }
 
   private setPref(patch: Partial<Preferences>): void {
@@ -910,3 +932,4 @@ export class App {
 
 declare const __APP_VERSION__: string;
 declare const __BUILD__: string;
+

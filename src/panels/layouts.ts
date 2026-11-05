@@ -12,7 +12,7 @@ export type Role =
 
 export type WidgetKind = 'knob' | 'segmented' | 'toggle' | 'readout' | 'select' | 'fader' | 'number';
 export type KnobTier = 'L' | 'M' | 'S';
-export type PaneKind = 'wave' | 'envelope' | 'meter' | 'scope' | 'steps' | 'filter';
+export type PaneKind = 'wave' | 'envelope' | 'meter' | 'scope' | 'steps' | 'filter' | 'models' | 'channels';
 /** Card proportion (DESIGN §7): `tall` stacks displays above controls, `wide` puts them side by side. */
 export type CardShape = 'tall' | 'wide';
 
@@ -74,7 +74,7 @@ const CORE_MIN_W = 150;
 const ITEM_GAP = 10;
 /** Footprint of each control, in px. Heights are measured; widths decide the card width. */
 const W_TIER: Record<KnobTier, number> = { L: 150, M: 84, S: 58 };
-const PANE_MIN_W: Record<PaneKind, number> = { wave: 230, envelope: 240, meter: 160, scope: 220, steps: 430, filter: 220 };
+const PANE_MIN_W: Record<PaneKind, number> = { wave: 230, envelope: 240, meter: 160, scope: 220, steps: 430, filter: 220, models: 260, channels: 200 };
 
 /** Vertical distance between side-rail ports. Touch needs more room. */
 export let portMinPitch = 30;
@@ -242,3 +242,4 @@ export class PanelOverrides {
 
   get(id: string): PanelOverride | undefined { return this.map.get(id); }
 }
+

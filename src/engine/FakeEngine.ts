@@ -308,6 +308,14 @@ export class FakeEngine implements EngineClient {
       if (n.type === 'essentials.adsr' || n.type === 'essentials.function_envelope') {
         envelope[n.id] = this.envelopeFor(n);
       }
+      if (n.type === 'essentials.mixer') {
+        // Channel meters are post-gain input levels, not a fabricated stereo pair.
+        const channel = (port: string, param: string) => this.conns
+          .filter(c => c.kind === 'signal' && c.to.module === n.id && c.to.port === port)
+          .reduce((sum, c) => sum + this.audioLevel(c.from.module, cache), 0)
+          * (this.effectiveParam(n, param) ?? 0.5);
+        meters[n.id] = [channel('a', 'level_a'), channel('b', 'level_b')];
+      }
       if (n.type === 'essentials.output') {
         const lvl = this.audioLevel(n.id, cache);
         meters[n.id] = this.meterWithPeak(n.id, lvl);
@@ -567,7 +575,7 @@ export class FakeEngine implements EngineClient {
         break;
       }
       case 'essentials.mixer':
-        out = upstream('a') * (n.params.level_a ?? 0.5) + upstream('b') * (n.params.level_b ?? 0.5);
+        out = upstream('a') * (this.effectiveParam(n, 'level_a') ?? 0.5) + upstream('b') * (this.effectiveParam(n, 'level_b') ?? 0.5);
         break;
       case 'essentials.output': out = upstream('audio'); break;
       default: out = upstream(); break;
@@ -670,3 +678,4 @@ export class FakeEngine implements EngineClient {
 const frac = (n: number) => n - Math.floor(n);
 const key = (c: Connection) => `${c.kind}|${c.from.module}:${c.from.port}|${c.to.module}:${c.to.port}`;
 export type { EngineError };
+

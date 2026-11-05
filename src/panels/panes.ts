@@ -7,6 +7,8 @@ import { Scope } from './widgets/Scope';
 import { WavePreview } from './widgets/WavePreview';
 import { EnvelopeCurve } from './widgets/EnvelopeCurve';
 import { FilterDisplay } from './widgets/FilterDisplay';
+import { ChannelMeters } from './widgets/ChannelMeters';
+import { ModelGrid } from './widgets/ModelGrid';
 import { StepsPane } from './widgets/StepsPane';
 
 /** Everything a display pane may read or write. Values go through the engine via `setValue`. */
@@ -77,15 +79,18 @@ export function buildPane(kind: PaneKind, c: PaneContext): Pane | null {
     }
     case 'meter': return new Meter(id, ticker);
     case 'scope': return new Scope(id, ticker);
+    case 'channels': return new ChannelMeters(c);
+    case 'models': return new ModelGrid(c);
     case 'steps':
       return new StepsPane({
         moduleId: id, ticker, steps: 8,
         param: pid => c.param(pid),
         getValue: pid => c.getValue(pid),
-        setValue: (pid, val) => c.setValue(pid, val, true),
+        setValue: (pid, val, commit) => c.setValue(pid, val, commit),
       });
     default: return null;
   }
 }
 
 const trim = (n: number) => (Math.round(n * 100) / 100).toString();
+
