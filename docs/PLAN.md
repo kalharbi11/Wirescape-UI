@@ -1,91 +1,78 @@
-# Plan: from prototype to the real Wirescape Studio
+# Wirescape Studio roadmap — Phase 7 UI pretest, Phase 8 native integration
 
-Updated 2026-11-05 by the planner (Claude). Owner goal: move fast, transfer the new design, keep the
-three contracts stable so the real engine can plug in.
+Updated 2026-11-05. **Phase 7 is the standalone Raspberry Pi browser/UI validation phase in this repository. Phase 8 is native-engine integration in [kalharbi11/wirescape](https://github.com/kalharbi11/wirescape).** The former “Phase 7 = real engine” numbering is superseded.
 
-## Where things are
+## Current integration state
 
-| what | where | state |
-|---|---|---|
-| Phases 1–3 app (Vite + TypeScript, fake engine, 21 modules from data, every cable gesture, live values), reskinned to the design system (**phase 3.5, done**) | `main` once branch `phase/3.5-reskin` merges: `src/`, `tests/`, `public/`, `index.html`, `reference/`; 23 session + 12 kit-control Playwright tests | in the new look; the old look survives only on branch `claude/new-session-p817y1` |
-| Design system (control-jam rounds 1–2) | `main`: `docs/DESIGN.md`, `ui/wirescape-ui-kit.html`, `ui/tokens.css`, `docs/DECISIONS.md` | decided and now implemented in `src/`; the kit stays the reference |
-| Brief (phases, contracts, fake engine, Pi rules, done checklist) | branch: `reference/Wirescape_UI_prototype_brief.md`; Claude Doc linked in AGENTS.md | phases 4–5 implemented on stacked branches; phase 6 continuation implemented |
-| Engine, modules, patch v2, MIDI, Pi runner | `kalharbi11/wirescape` (paused) | Qt UI frozen; becomes the real engine behind `EngineClient` |
+| Work | Implementation / Git status |
+|---|---|
+| Phases 1–3 | Original browser app + FakeEngine; PR #1 is old-look and superseded by #3 |
+| Phase 3.5 | Reskin / 21 modules; PR #3 merged to `main` |
+| Phase 4 | Editing; PR #4 merged into `phase/3.5-reskin` |
+| Phase 5 | System; PR #5 merged into `phase/4-editing` |
+| Phase 6 | Signature panels/polish; PR #6 merged into `phase/5-system` |
+| Phase 7 | `phase/7-pi-validation` starts from the cumulative `phase/5-system` merge result |
+| Phase 8 | Planned, mainly in the separate native `wirescape` repo |
 
-## The contracts (never break them)
-1. **Module data:** every card is built from `wirescape_modules.json` plus optional `panels/<id>.json`. No module-specific code in the generic builder.
-2. **`EngineClient`:** the only way the UI talks to an engine. `FakeEngine` is the only place values are invented.
-3. **Patch v2:** IDs stable; unknown fields survive load → save.
+**Merge gate:** The stacked PRs #4–6 were merged into their *intermediate base branches*, not directly to `main`. At this snapshot, `main` has Phase 3.5; the cumulative Phases 4–6 are on `phase/5-system`. Before accepted Pi tests, promote that cumulative implementation to `main`, confirm hosted checks at the final SHA, and retarget/review the Phase 7 PR against `main`. Do **not** separately merge superseded old-look PR #1. This plan update does not merge code or start tests.
 
-## Phases
+## Three contracts to preserve
 
-### Phase 3.5: merge and reskin (done on branch `phase/3.5-reskin`; conflicts listed in DECISIONS.md)
-Bring the phase 1–3 app onto `main` and dress it in the new design system.
-- **Merge:** take `src/`, `tests/`, `public/`, `index.html`, package/config files, `.gitignore` and `reference/` from the branch. Keep `main`'s `docs/` and `ui/`, and keep `AGENTS.md`. Fold the branch's root `DESIGN.md` into `docs/DESIGN.md` as new sections: contracts, card sizing, gestures, test hooks, frame figures. Where the two disagree, **`docs/DESIGN.md` and `DECISIONS.md` win**. List every conflict you resolve in `DECISIONS.md`.
-- **Don't commit** `docs/shots/` or `docs/recordings/` (binaries). Attach screenshots to the PR instead.
-- **Reskin to the kit:**
-  - tokens from `ui/tokens.css`
-  - knob tiers L/M/S, with the graphite cap and the wire S tier
-  - one combined modulation range arc plus the `→ live value` readout
-  - plain dotted-underline numbers
-  - round-fill segmented controls
-  - parameter and module **i** info boxes
-  - jacks on side rails
-  - cards `tall`/`wide` with r 14
-  - **cables per DESIGN §9:** no meaning in colour, user-picked palette, dotted while carrying signal, the sag spring
-  - motion per §8
-  - LFO wave on a dot grid; ADSR with a baseline axis; VCF hero-led display with the KNOBS/GRAPH switch
-  - white paper with the dot texture
-- **Done when:**
-  - all 21 modules render in the new look
-  - all 23 existing tests pass, plus tests for the kit controls you added
-  - the done-checklist session passes at 50/100/185% zoom
-  - `loop ms/frame` with 20 modules and 40 cables is at or below the branch's figure
-  - the PR shows before/after screenshots
+1. **Catalogue-driven panels:** `public/wirescape_modules.json` plus optional `public/panels/<id>.json`; no module-specific branches in the generic panel builder.
+2. **`EngineClient`:** the UI talks through this interface; Phase 7 continues to use `FakeEngine` for invented signal values, so there is no native host dependency.
+3. **Patch v2:** IDs and unknown fields survive load/save. Native execution/output bus validation is Phase 8, not a reason to fail the Phase 7 UI-only test.
 
-### Owner checkpoint A (phase 3.5 approved for this continuation)
-Open it on the laptop **and on the Pi in Chromium**. Patch a synth by hand, then answer the open items
-below in `DECISIONS.md` or the PR. This is the "more UI testing" step. Do it here, not later.
+## Implemented phases
 
-### Phase 4: editing
-**Status (branch `phase/4-editing`, stacked on 3.5):** done: undo/redo to an empty canvas and back, copy/cut/paste/duplicate (also between patches), typed values everywhere (OPEN-8), with 8 tests in `tests/editing.spec.ts` (rapid undo, paste across zoom, reload mid-drag). Already in place from phases 1-3: multi-select (box + shift), select-all, save/open, autosave + restore on launch, six starter patches. **Follow-up completed:** six Qt starter fixtures (#187 / PR #192) are now bundled alongside the existing six browser demos, preserving native metadata and reskinning positions.
+**3.5 — merge/reskin:** new kit tokens, knobs, cables, modulation UI, displays, port rails, gestures, 21 catalogue modules and tests.
 
-Undo/redo (to an empty canvas and back), copy/paste, multi-select (box and shift), save/load, starter
-patches (port the six from the Qt repo, #187), autosave and recovery, typed value entry (OPEN-8).
-Tests: break it on purpose (rapid undo, paste across zoom, reload mid-drag).
+**4 — editing:** undo/redo, multi-select, copy/paste/duplicate, typed values, save/import/autosave/recovery and starter patches.
 
-### Phase 5: system
-**Status (branch `phase/5-system`, stacked on 4):** done: device toasts, sample rate, OSC (on/off, port, allow network, recent-message monitor, status chip), automatic Pi profile on slow frames, update-check stub, build info, LED-latch settings switches, debug switches for OSC traffic and slow frames; 6 tests in `tests/system.spec.ts`. Already there: audio/MIDI status, CPU, dropouts, panic, preferences. **Owner checkpoint B** still open (Pi FPS, OPEN-5).
-Audio, MIDI and OSC status and settings (fake), CPU, panic, preferences, the Pi performance profile
-(automatic on slow devices), the dev panel's fault switches, and a "check for updates" stub.
-**Owner checkpoint B:** record the Pi FPS figures in `DESIGN.md` (OPEN-5).
+**5 — system:** simulated audio/MIDI/OSC status/settings/faults, panic, automatic Pi profile and update-check stub.
 
-### Phase 6: signature panels and polish (CHAOS-lite deferred, owner's call)
-**Implementation complete on the continuation branch:** editable Step Sequencer with tie bars, Macro model bank and grouped controls, Mixer channel faders/meters, Output display sizing (`panels/<id>.json` plus small widgets). See DESIGN §18.
+**6 — signature panels and polish:** Step Sequencer, Macro Oscillator, Mixer/Output, six Qt starter fixtures alongside browser demos, history/keyboard/modal/telemetry corrections. CHAOS-lite remains generic. **None of these phases has been certified on the physical Pi yet.**
 
-Step Sequencer, Macro Oscillator, Mixer/Output custom panels (`panels/<id>.json` plus small widgets),
-a polish pass, and the full done checklist from the brief. CHAOS-lite keeps the generic panel for now.
+## Phase 7 — Pi UI pretest (NEXT)
 
-### Phase 7: the real engine (in `kalharbi11/wirescape`; can start after 3.5, in parallel)
-- Spike first: a headless C++ host speaking a localhost-only, token-protected protocol that maps 1:1 onto `EngineClient`, plus `RealEngine.ts` that talks to it. Two modules, one cable, one knob, real sound.
-- Then: the full `EngineClient` surface; Tauri packaging on Windows; Chromium kiosk on the Pi; move this app into `wirescape` as `apps/studio` with `git subtree` (keeps history); then retire the Qt UI.
+**Repository:** `Wirescape-UI`. **Branch:** `phase/7-pi-validation`. **Hardware runner:** dedicated `pi-ui` self-hosted Pi runner; headed *system* Chromium and actual monitor. **Engine:** `FakeEngine` only. **Objective:** find/fix UI, browser, physical display, performance, interaction and reliability issues *before* moving UI to the native engine repo.
 
-## Open items to settle at checkpoint A
-| id | question | default if unanswered |
-|---|---|---|
-| Q-A | Pi screen: resolution; touch or mouse? | 1920×1080, mouse plus the touch profile available |
-| Q-B | several cables into one signal input: add (sum) or replace? | add (sum), as in the engine |
-| OPEN-1 | toggle style | LED latch |
-| OPEN-2 | jack rings keep hint colours while cables don't? | keep |
-| OPEN-3 | cable palette ("replace purple with like…") | ochre `#c99a2e`, slate `#5d6a73` |
-| OPEN-4 | active cable: static or crawling dots | static |
-| OPEN-6 | which modules are `wide` | VCF offers both; others tall |
-| OPEN-7 | Clock card review | as in round 1 |
-| Q-C | dark theme now or later | later |
+| Gate | Required work |
+|---|---|
+| **7.0 Integration/runner readiness** | Cumulative Phases 3.5–6 and acceptance harness on `main`; exact-SHA hosted build/typecheck/Playwright green; runner online, display session accessible. A queued/cancelled job or one with zero setup steps is infrastructure **BLOCKED**, not UI failed. |
+| **7.1 Fix test-harness gaps before hardware sign-off** | Replace the current 120-rAF-frame Pi sample with sustained 15–30-second post-warmup intervals; record p95/p99 pacing/stalls in addition to mean FPS. Keep 20-module/40-cable modulation stress fixture and **add** a representative signal-bearing FakeEngine VCO/Mixer/Output fixture with active meters/scope. Check the 5-second auto-Pi-profile watchdog separately; collect renderer and read-only thermal/load context. Adjust test/job timeouts if needed. |
+| **7.2 Automated headed Pi regression** | Run the current full browser suite with no Xvfb/headless fallback: 21 modules; all patch gestures; 50/100/185% zoom; save/restore/unknown fields; editing/undo; keyboard/modals; fake system faults; all 12 starters at mouse and touch-profile density. Capture screenshots, video, traces and errors. |
+| **7.3 Physical performance** | Normal/Pi profile × fit/100% view, modulation-heavy and signal-bearing workloads; target ≥30 measured rAF FPS on Pi with acceptable frame pacing. Record actual viewport/resolution/DPR/refresh, GPU/backend, Chromium, load/temperature and visibility/focus. A 30Hz ticker update cap is **not** proof of 30 FPS. |
+| **7.4 Owner usability checkpoint** | Manually check patching, mapping/cable amount/colours, typed controls, keyboard, focus, undo/redo, save/reload, signatures and large panels on the real display; verify cards/port labels/readability/hit targets. Check touch-profile geometry, but claim physical touch only if a touchscreen is actually used. Decide Q-B cable drop behavior (replace normally, Shift-add currently; plan default is add/sum), including an accessible touch action. |
+| **7.5 Fix, rerun, sign off** | Fix only UI-related defects here, add regressions and rerun on exact final merged SHA. Document hardware measurements in `docs/PERFORMANCE.md` and decisions in `DESIGN.md` / `DECISIONS.md`. Close OPEN-5 only with valid physical evidence. Label runner/display failures, fake-engine limitations and Phase 8 dependencies separately. |
 
-## How to work
-- One chat per phase (Claude Code web on this repo). Each phase ends with: screenshots, a short recording attached to the PR (not committed), tests green, and `docs/DESIGN.md` / `DECISIONS.md` updated.
-- A phase is a branch `phase/<n>-<slug>` with a PR to `main`; the owner merges after a look.
-- Big inventions (new panel type, new gesture): propose in one sentence or a quick mock first.
-- Follow `docs/PERFORMANCE.md`; check `loop ms/frame` after every change.
+**Phase 7 exit:** hosted checks green; complete headed physical Pi evidence at final SHA; ≥30 actual UI FPS with acceptable pacing; no unresolved UI-only blocker; documented user interactions and owner decisions. **Out of scope:** audible sound, real MIDI/OSC/audio devices, DSP equivalence, native patch execution, realtime contention, engine transport.
 
+Execution details: [Phase 7 test plan](PI_UI_TEST_PLAN.md), [dedicated Pi runner](PI_UI_RUNNER.md), and [pre-Pi code review notes](PRE_PI_READINESS_REVIEW.md). The existing workflow remains **manual, owner-only and `main`-only**. No hardware run is triggered by changing these documents.
+
+### Review items from Phases 3.5–6 to address before/during the first Pi run
+
+- **Measurement blockers:** 120-frame sample is too short, no sustained stutter/thermal context, forced profiles do not test the automatic fallback; stress patch has LFOs/VCFs but no source-to-Output signal path to animate meters/scope.
+- **UX decisions/tests:** Q-B replace vs sum/add on cable drop (especially touch access); large Sequencer/Macro, Mixer/Output meters, side-rail jacks and all starter layouts at actual scale; history/keyboard/modal-focusing regression coverage on real Pi.
+- **Document as FakeEngine limitation, not Pi defect:** Sequencer Note/Tie UI drawing exists, but simplified FakeEngine gate semantics do not validate real musical sustain.
+- **Keep in Phase 8:** patch-v2 native codec/output routes, asynchronous engine refusals/reconciliation, genuine telemetry, CC mapping, realtime audio/DSP and device tests.
+
+## Phase 8 — native Wirescape integration
+
+**Repository:** primarily `kalharbi11/wirescape`; begins after Phase 7 UI acceptance (planning may run in parallel). Full technical handoff: [PHASE8_HANDOFF.md](PHASE8_HANDOFF.md).
+
+1. Pin native revision; implement lossless patch-v2 adapter, module metadata/output buses and protocol acknowledgement/refusal.
+2. Spike loopback-only token-protected headless C++ host + `RealEngine.ts`, initial real VCO → Output, one cable/knob, user-approved real sound.
+3. Add safe telemetry snapshots, status, real MIDI/OSC, modulation parity and controlled graph replacements outside audio callback.
+4. Re-run Pi/desktop fixtures with real engine/audio contention; then packaging, kiosk and `apps/studio` import / Qt retirement as separately reviewed gates.
+
+## Pending owner decisions
+
+- **Q-A:** record the Pi display's *actual* resolution, DPR and input hardware; do not infer “2K” exact pixels.
+- **Q-B:** default proposed sum/add for multiple cables; current ordinary drop replaces while Shift-drop adds. Do not change silently.
+- **OPEN-1/2/3/4/6/7:** preserve existing design defaults unless actual Pi usability exposes a problem.
+- **OPEN-5:** physical Pi FPS/frame pacing unmeasured; keep open until Phase 7 evidence exists.
+- **Q-C:** dark theme later.
+
+## Working rules
+
+One branch/PR per phase; keep the library/styles consistent with `DESIGN.md` and `DECISIONS.md`. Do not commit binary screenshots or recordings; use CI artifacts. No native runner/service reconfiguration or real devices in Phase 7. Report unavailable stages honestly, not as green.
