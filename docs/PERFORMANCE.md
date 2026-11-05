@@ -95,3 +95,23 @@ The kit uses **no libraries**; CSS transitions, the Web Animations API, CSS `lin
 ## How to measure
 
 The kit's top bar shows `loop ms/frame · fps · live widgets · WAAPI`. For per-widget numbers, wrap each `tickers[i].fn` with `performance.now()` (the snippet used for the table above is in [AGENTS.md](../AGENTS.md#measuring)).
+
+### Phase 6 cloud regression sample (2026-11-05)
+
+Reproducible `tests/review-artifacts.spec.ts`: 10 LFOs + 10 VCFs, 40 cables
+(30 modulation connections), a note held, Chromium 131 on GitHub's hosted x86
+runner, 1920×1080, 120 animation-frame samples after warm-up.
+
+| profile | zoom | telemetry application ms/update | animation-loop FPS |
+|---|---|---|---|
+| normal | fit | 0.693 | 60 |
+| normal | 100% | 0.333 | 60 |
+| Pi profile | fit | 1.171 | 60 |
+| Pi profile | 100% | 0.583 | 60 |
+
+The Pi profile applies telemetry at 30 Hz; the reported FPS is the requestAnimationFrame
+loop, not a claim of 60 Hz widget updates. `ticker.applyMs` is a smoothed application
+cost. This fixture contains more continuously redrawn filters than the earlier app
+sample, so the tables are not a before/after comparison. None of these are Pi
+hardware measurements; OPEN-5 remains open. Screenshots and a WebM recording are
+uploaded with CI's `browser-review-and-traces` artifact, never committed.

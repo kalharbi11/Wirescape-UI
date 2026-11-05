@@ -414,3 +414,5 @@ Six original Qt starters from `kalharbi11/wirescape` PR #192, source `96cad1cd7e
 Phase-5 follow-up: audio settings tolerate zero devices, hide unsupported optional setters, refresh sample-rate choices when devices change, and call `setBufferFrames` through the engine contract. Closing Settings releases the OSC listener. An unsaved motion preference honors the OS reduced-motion setting.
 
 Pi checkpoint B / OPEN-5 remains **unmeasured on hardware**. Cloud browser and source validation are not Pi measurements. The real-engine work remains phase 7.
+
+Phase-6 cloud frame samples (20 modules / 40 cables) and the recording procedure are in PERFORMANCE.md. The original drone starter's LFO is moved below the Ladder panel so controls remain clear. Every bundled starter is checked for card overlap at mouse and touch density.
