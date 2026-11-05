@@ -93,3 +93,46 @@ Rejected outright (don't revive without asking): ghost needle, comet trail, hist
 | LFO: no vertical rust line | phase dot only, on the dot grid |
 | Revise the reskin's design | headers no longer repeat the code (`VCF Filter`); horizontal output meters with a dB scale; Clock leads with a large tempo number, duty + ticks/beat below; LFO controls regrouped (rate; depth · beats · offset; sync); CC to CV card height follows its collapsed rail |
 | Cable shape was inconsistent (hook in the middle, too straight at some ends) | one cubic per cable, near level at both nodes, droop capped by the reach; the owner approved the short loop into a gate and the curl into an input from below |
+
+## Phase 4 (2026-11-05): editing
+
+| topic | decision |
+|---|---|
+| undo model | snapshots of the patch (minus the view) per gesture, not per-feature inverse commands: every edit is undoable with no extra code; the cost is a `JSON.stringify` of the patch per step (well under 1 ms at 20 modules) and a card rebuild per undo |
+| step boundaries | pointer gestures commit on pointerup; everything else after 350 ms of quiet |
+| view | not part of history (undo never moves the camera) |
+| clipboard | in-app plus `localStorage` (`wirescape.clipboard.v1`), not the system clipboard: works across reloads and patches without a permission prompt |
+| typed values | one parser for all controls; a bare number is in the parameter's own unit, except a percentage (read as shown) |
+| Qt starters (#187) | not ported: the Qt repo was not reachable from this session |
+
+## Phase 5 (2026-11-05): system
+
+| topic | decision |
+|---|---|
+| card padding (owner) | header 30 → 36 px; body 12/14 → 22/24 px top/bottom; sides unchanged |
+| OSC | off by default, localhost only by default; port range 1024–65535, refusals roll back with a toast; recent-message monitor in Settings |
+| engine contract | only optional additions (`osc?`, `setSampleRate?`, `setBufferFrames?`, `setOsc?`) so a real engine without them still conforms |
+| automatic Pi profile | boot sniff (cores, memory, ARM) plus a run-time watchdog (< 40 fps for 5 s, once a session), user can turn it off |
+| update check | a stub that never touches the network |
+| settings switches | LED latch, as the panels (OPEN-1 default) |
+
+
+## Phase 6 continuation (2026-11-05)
+
+Owner authorization: assume phase 3.5 approved, preserve its design language, finish phases 5 and 6. No further design checkpoint blocks implementation. The existing stacked phase branches remain unmerged pending owner review.
+
+| topic | decision |
+|---|---|
+| signature panels | data overrides plus small reusable `steps`, `models`, `channels` panes; no module branch in the generic builder |
+| sequencer | shared exact-value controls, explicit Rest/Note/Tie, joining bars, actual-length telemetry playhead; values outside length retained |
+| Macro models | numbered values from catalogue; no invented model names or fake waveform preview; responsive keyboard navigation |
+| Mixer/Output | existing faders and meter style; telemetry A/B after gain for Mixer, L/R for Output; Output width derived, no invented output controls |
+| starter polish | move the drone LFO below the Ladder and the Macro LFO below its expanded touch panel; guard all browser and Qt starter layouts against overlapping cards at both densities |
+| Qt starters | port six fixtures from PR #192 at `96cad1cd7eeef673db6b5cbdcf09d4dc9008ab9d`; keep existing browser demos so their documented session remains reproducible |
+| system audit | optional audio capabilities hidden; no-device safe; device rates refreshed; OSC unsubscribed on close; reduced-motion default matches OS |
+| automation | GitHub Actions installs locked dependencies, typechecks/builds and runs Chromium regression suite; failure traces retained |
+| hardware | OPEN-5 stays open until actual Pi measurements; CHAOS-lite, dark theme and phase 7 remain deferred |
+
+## Revision before phase 7
+
+Fix reproduced history gesture boundaries, stuck keyboard note releases after octave changes, modal focus/background shortcuts, sparse effective-value retention and fader live-marker reset. Preserve the approved design and synchronous prototype engine contract. The real engine adapter must supply native graph metadata/output buses and define asynchronous rejection handling; these are integration work, not visual redesign. Keep actual Pi display benchmarking separate from hosted headless evidence.

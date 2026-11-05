@@ -6,3 +6,4 @@ playwright-report
 *.local
 docs/shots/
 docs/recordings/
+build_reports/pi-ui/

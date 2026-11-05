@@ -2,7 +2,7 @@
   "code": "MAC",
   "sections": [
     {
-      "label": "01 / VOICE",
+      "label": "VOICE",
       "params": [
         "harmonics",
         "timbre",
@@ -10,25 +10,16 @@
       ]
     },
     {
-      "label": "02 / PITCH",
-      "columns": 2,
+      "label": "PITCH / MODULATION",
       "params": [
         "coarse",
-        "model"
-      ]
-    },
-    {
-      "label": "03 / MOD AMOUNTS",
-      "columns": 3,
-      "params": [
         "fm_amount",
         "timbre_amount",
         "morph_amount"
       ]
     },
     {
-      "label": "04 / LPG",
-      "columns": 2,
+      "label": "LOW-PASS GATE",
       "params": [
         "decay",
         "lpg_colour"
@@ -52,5 +43,27 @@
         "timbre_cv"
       ]
     }
+  },
+  "panes": [
+    "models"
+  ],
+  "paneOptions": {
+    "models": {
+      "parameter": "model"
+    }
+  },
+  "hidden": [
+    "model"
+  ],
+  "roles": {
+    "harmonics": "hero",
+    "timbre": "primary",
+    "morph": "primary",
+    "coarse": "trim",
+    "fm_amount": "trim",
+    "timbre_amount": "trim",
+    "morph_amount": "trim",
+    "decay": "secondary",
+    "lpg_colour": "secondary"
   }
 }

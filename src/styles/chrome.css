@@ -200,3 +200,19 @@ body { font: 13px/1.45 var(--sans); }
 @media (max-width: 1060px) {
   .app.library-open .library { box-shadow: 2px 0 12px rgba(0, 0, 0, 0.06); }
 }
+
+/* Phase 5: OSC settings, monitor, status chip. */
+.input-text {
+  width: 90px; font: 11px var(--mono); color: var(--ink); background: transparent;
+  border: 0; border-bottom: 1px dotted var(--graph); padding: 2px 0;
+}
+.input-text:focus { outline: none; border-bottom: 1px solid var(--ink); }
+.osc-monitor {
+  min-width: 220px; max-height: 120px; overflow: hidden; padding: 4px 0;
+  border-top: .5px solid var(--hair); border-bottom: .5px solid var(--hair);
+  font: 9.5px/1.6 var(--mono); color: var(--graph); font-variant-numeric: tabular-nums;
+}
+.osc-line { white-space: nowrap; }
+.osc-line.muted { color: var(--mute); }
+.status-osc.warn { color: var(--rust); }
+.about .action { margin-top: 8px; }

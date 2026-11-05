@@ -1,4 +1,10 @@
 import type { PatchV2 } from '../patch/types';
+import qtMinimal from './qt-starters/qt-minimal.json' with { type: 'json' };
+import qtLfoFilter from './qt-starters/qt-lfo-filter.json' with { type: 'json' };
+import qtMidi from './qt-starters/qt-midi.json' with { type: 'json' };
+import qtPoly from './qt-starters/qt-poly.json' with { type: 'json' };
+import qtChaos from './qt-starters/qt-chaos.json' with { type: 'json' };
+import qtMacro from './qt-starters/qt-macro.json' with { type: 'json' };
 
 export interface Starter { id: string; name: string; note: string; patch: () => PatchV2 }
 
@@ -60,7 +66,7 @@ export const STARTERS: Starter[] = [
         { kind: 'signal', from: { module: 4, port: 'audio' }, to: { module: 5, port: 'audio' } },
         { kind: 'modulation', from: { module: 6, port: 'control' }, to: { module: 4, port: 'cutoff' }, amount: 0.4 },
       ],
-      { 1: [40, 100], 2: [40, 480], 3: [620, 240], 4: [1180, 240], 5: [1844, 250], 6: [1180, 620] },
+      { 1: [40, 100], 2: [40, 480], 3: [620, 240], 4: [1180, 240], 5: [1844, 250], 6: [1180, 820] },
     ),
   },
   {
@@ -127,7 +133,7 @@ export const STARTERS: Starter[] = [
         { kind: 'signal', from: { module: 2, port: 'main' }, to: { module: 3, port: 'audio' } },
         { kind: 'modulation', from: { module: 4, port: 'control' }, to: { module: 2, port: 'timbre' }, amount: 0.3 },
       ],
-      { 1: [40, 200], 2: [580, 80], 3: [1620, 200], 4: [580, 820] },
+      { 1: [40, 200], 2: [580, 80], 3: [1620, 200], 4: [580, 1100] },
     ),
   },
   {
@@ -152,3 +158,42 @@ export const STARTERS: Starter[] = [
 ];
 
 export const DEFAULT_STARTER = STARTERS[0]!;
+
+/**
+ * Faithful imports of the Qt starter library (#187 / wirescape PR #192,
+ * 96cad1cd7eeef673db6b5cbdcf09d4dc9008ab9d). Bundled JSON works offline.
+ * Keep native x/y, settings, outputs, config and licence fields intact;
+ * only ui.positions adapts spacing to the larger browser cards.
+ */
+function qtStarter(id: string, name: string, note: string, source: unknown): Starter {
+  return {
+    id, name, note,
+    patch: () => {
+      const patch = structuredClone(source) as PatchV2;
+      patch.ui = {
+        ...patch.ui,
+        positions: Object.fromEntries(patch.modules.map(m => [String(m.id), [
+          Math.round(Number(m.x ?? 0) * 2.6), Math.round(Number(m.y ?? 0) * 2.1),
+        ] as [number, number]])),
+        view: { x: 0, y: 0, zoom: 1 },
+      };
+      return patch;
+    },
+  };
+}
+
+STARTERS.push(
+  qtStarter('qt-minimal', 'Qt · Minimal oscillator',
+    'VCO → Output. A continuous tone in the real engine; this prototype makes no sound.', qtMinimal),
+  qtStarter('qt-lfo-filter', 'Qt · LFO shaped amplitude',
+    'VCO → VCF → VCA → Output; an LFO drives gain CV. Fake-engine visual preview only.', qtLfoFilter),
+  qtStarter('qt-midi', 'Qt · MIDI pitch to oscillator',
+    'MIDI In → MIDI to CV → VCO → Output. Requires an enabled MIDI device and the real engine for MIDI input and sound.', qtMidi),
+  qtStarter('qt-poly', 'Qt · Four-voice keyboard chords',
+    'Keyboard → VCO → Output, four voices. Play chords with the computer keyboard; sound requires the real polyphonic engine.', qtPoly),
+  qtStarter('qt-chaos', 'Qt · CHAOS-lite',
+    'Keyboard pitch → CHAOS-lite, left/right summed through Mixer → Output. Generic CHAOS panel; real-engine sound only.', qtChaos),
+  qtStarter('qt-macro', 'Qt · Macro Oscillator',
+    'Keyboard pitch, gate and velocity → Macro Oscillator → Output. Play notes with the computer keyboard; fake-engine visual preview only.', qtMacro),
+);
+

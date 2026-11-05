@@ -1,6 +1,6 @@
 import type { ModuleParam } from '../../modules/types';
 import type { Ticker } from '../../runtime/Ticker';
-import { formatValue, normToValue, quantize, valueToNorm } from '../../modules/registry';
+import { formatValue, normToValue, quantize, valueToNorm, parseTyped, displayValue } from '../../modules/registry';
 import { el } from '../../app/dom';
 
 export interface FaderOptions {
@@ -26,6 +26,8 @@ export class Fader {
   private readonly valueEl: HTMLElement;
   private readonly h: number;
   private unbind: () => void = () => {};
+  private live: number | undefined;
+  private liveBase = NaN;
 
   constructor(private readonly o: FaderOptions) {
     const p = o.param;
@@ -50,6 +52,9 @@ export class Fader {
 
     this.valueEl = el('div', 'fader-value');
     this.root.append(this.track, el('div', 'control-label fader-label', p.name), this.valueEl);
+    // OPEN-8: click the value to type one (same parser as knobs and number boxes).
+    this.valueEl.title = 'Click to type a value';
+    this.valueEl.addEventListener('click', () => this.promptValue());
 
     this.track.addEventListener('pointerdown', e => this.onDown(e));
     this.track.addEventListener('dblclick', e => {
@@ -71,13 +76,9 @@ export class Fader {
 
     this.refresh();
     if (o.ticker) {
-      let last = NaN;
       this.unbind = o.ticker.bind(o.moduleId, t => {
         const v = t.effective[o.moduleId]?.[p.id];
-        if (v === undefined || v === last) return;
-        last = v;
-        this.root.classList.add('modded');
-        this.paintLive(v);
+        if (v !== undefined) this.paintLive(v);
       });
     }
   }
@@ -97,10 +98,17 @@ export class Fader {
     this.valueEl.dataset.testid = `readout-${this.o.moduleId}-${p.id}`;
     this.thumb.setAttribute('aria-valuenow', String(v));
     this.thumb.setAttribute('aria-valuetext', text);
-    if (!this.root.classList.contains('modded')) this.paintLive(v);
+    this.paintLive(this.root.classList.contains('modded') ? this.live ?? v : v);
   }
 
   private paintLive(v: number): void {
+    const base = this.o.getValue();
+    if (v === this.live && base === this.liveBase) return;
+    this.live = v;
+    this.liveBase = base;
+    // The engine also reports unmodulated parameters. Rust is reserved for
+    // an effective value that actually differs from the thumb's set value.
+    this.root.classList.toggle('modded', Math.abs(v - base) > 1e-9);
     this.ghost.style.transform = `translateY(${(1 - valueToNorm(this.o.param, v)) * this.h}px)`;
   }
 
@@ -139,5 +147,33 @@ export class Fader {
     this.track.addEventListener('pointermove', move);
     this.track.addEventListener('pointerup', up);
     this.track.addEventListener('pointercancel', up);
+  }
+
+  private promptValue(): void {
+    const p = this.o.param;
+    const input = el('input', 'readout-input') as HTMLInputElement;
+    input.value = displayValue(p, this.o.getValue());
+    input.dataset.testid = `readout-input-${this.o.moduleId}-${p.id}`;
+    input.setAttribute('aria-label', `${p.name} value`);
+    this.valueEl.replaceWith(input);
+    input.focus(); input.select();
+    let done = false;
+    const finish = (apply: boolean) => {
+      if (done) return;
+      done = true;
+      if (apply) {
+        const v = parseTyped(p, input.value, this.o.getValue());
+        if (v !== null) this.o.setValue(v, true);
+      }
+      input.replaceWith(this.valueEl);
+      this.refresh();
+    };
+    input.addEventListener('keydown', e => {
+      e.stopPropagation();
+      if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+      if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+    });
+    input.addEventListener('blur', () => finish(true));
+    input.addEventListener('pointerdown', e => e.stopPropagation());
   }
 }

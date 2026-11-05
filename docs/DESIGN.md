@@ -199,7 +199,7 @@ Each module type keeps its own size (no grid), but the size comes from data.
 
 - **Width** is derived: input gutter + output gutter + the widest row of controls (or the widest pane; in a `wide` card, pane + controls), plus 12 px padding per side. The header must also fit. The override key `width` replaces it. Gutters are sized from the longest port label: 22 + 5.6 px per character, at most 132 px, 14 px with no ports.
 - **Height is measured once**, after the card is in the DOM, because the controls are content-sized. Measuring is batched for a whole patch (Pi rule 8). Port anchors are then derived from that height and never read again. A minimum height keeps the port pitch.
-- **Ports** sit on side rails and are spread evenly over the card height. `HEADER_H` = 30 px. Minimum port pitch 30 px (mouse), 42 px (touch). Minimum height = `HEADER_H` + (port rows + 1) × pitch.
+- **Ports** sit on side rails and are spread evenly over the card height. `HEADER_H` = 36 px (raised from 30 in the owner review so header controls clear the border); the body has 22 px padding above and 24 px below the controls. Minimum port pitch 30 px (mouse), 42 px (touch). Minimum height = `HEADER_H` + (port rows + 1) × pitch.
 - Control footprints used for the width: knob L 150, M 84, S 58 px; fader 46; select 150; item gap 10.
 - Fonts (IBM Plex, `@fontsource`, latin 400/500/600) are bundled so the Pi works offline. Boot waits for them because heights are measured.
 - A test checks every module in both hit profiles for overflow.
@@ -262,14 +262,26 @@ Knob tiers: hero L, primary and secondary M, trim S. Auto sections have no label
 | Knob: wheel | ±0.02 travel (±0.004 with shift) |
 | Knob: arrows | ±0.01 travel (±0.002 with shift); PageUp/Down ±0.1; Home/End to the ends |
 | Knob: double-click | reset to the default |
-| Knob readout: click | type a value |
+| Knob readout, number box, fader value: click | type a value. It starts from what's shown (`1.2 kHz`) and accepts `2k`, `1.2 kHz`, `A4` (Hz), `350 ms`, `1.5 s`, `-6`, `40%` or a choice label. A bare number is in the parameter's own unit, except a percentage, which reads as shown (`40` means 40%). Nonsense is ignored |
 | Knob: no modulation handle | the depth is edited on the selected cable |
 | Header KNOBS / GRAPH (VCF) | graph: drag the peak for cutoff + resonance; the card keeps its height |
 | Envelope handles | hollow, draggable on the display; ADSR stages also as number boxes below |
 | Number box: drag sideways | 0.004 of travel per px |
 | Number box: click | type a value; arrows ±0.01 (shift ±0.002); double-click resets |
-| Fader: drag | moves the thumb; wheel and arrows nudge (shift finer); Home/End to the ends; double-click resets; no typing yet (OPEN-8) |
+| Fader: drag | moves the thumb; wheel and arrows nudge (shift finer); Home/End to the ends; double-click resets; click the value to type |
 | Segmented, toggle, select | click |
+
+**Editing (phase 4).**
+
+| action | keys / control | behaviour |
+|---|---|---|
+| Undo | Ctrl/Cmd + Z, top-bar ↶ | back one step, all the way to an empty canvas; the view stays where it is |
+| Redo | Ctrl/Cmd + Shift + Z, Ctrl + Y, top-bar ↷ | forward one step; any new edit clears the redo stack |
+| Copy / cut | Ctrl/Cmd + C / X | the selected modules, their parameters, labels, extra fields, and the cables *between* them (with colours); kept in `localStorage`, so paste works after a reload and in another patch |
+| Paste | Ctrl/Cmd + V | new instance ids; cascades +40 px per paste; if the originals are off screen, lands in the middle of the view; unknown module types are skipped with a toast; the pasted group is selected |
+| Duplicate | Ctrl/Cmd + D | copy + paste in one step |
+
+**What one undo step is** (`src/patch/History.ts`): history is snapshot-based (the patch minus the view, up to 200 steps). Changes made while a pointer is down are committed on pointerup, so a whole knob drag, module drag, cable drop, stereo pair or mapping click is one step. Other changes (keys, typed values, paste, delete) are committed after 350 ms of quiet, so holding an arrow key is one step too. Loading or starting a patch, and restoring the autosave, starts a fresh history. Undo rebuilds the cards from the snapshot (one `reset`) and reloads the engine graph through `loadGraph`.
 
 **Replace or add:** a signal input takes one cable; a second drop replaces the first; shift-drop adds. The PLAN default for Q-B is "add (sum)"; this is still to be confirmed.
 
@@ -340,6 +352,32 @@ tests/        session.spec.ts, kit-controls.spec.ts, helpers.ts
 reference/    the brief and the first visual sketch
 ```
 
+## 17. System (phase 5)
+
+Everything here runs against the fake engine; the real engine fills the same fields.
+
+**Status bar** (bottom): audio state chip (`STARTING`, `RUNNING`, `NO DEVICE`, `DEVICE LOST`, `RECONNECTING`); device · sample rate · buffer · latency; CPU % (rust above 80); dropouts (rust above 0); BPM and run/stop when a Clock exists; OSC chip `OSC 9000 · LOCAL` while OSC is on (rust `NETWORK` when it accepts from the network); one chip per MIDI device with an activity dot; PANIC; SETTINGS.
+
+**Toasts for changes under the user:** a MIDI device connected or disconnected; the audio device lost ("reconnecting when it returns"), no device, and "Audio is back".
+
+**Settings**, grouped:
+
+| group | items |
+|---|---|
+| Audio | output device, sample rate (the device's rates), buffer size (latency follows) |
+| MIDI | each device on/off (all on by default) |
+| OSC | server on/off (off by default), port (1024–65535; anything else is refused and rolled back), allow network (off = localhost only), recent messages (last 8, live) |
+| Interface | motion, performance profile, **switch to Pi when slow** (on by default), hit areas, UI scale, theme, port labels |
+| About | version, build (git sha · date), cores, profile; **Check for updates** (a stub: answers "Up to date" after 0.6 s, nothing leaves the machine) |
+
+On/off settings use the LED latch (OPEN-1 default), the same as panel toggles.
+
+**Pi profile, automatic.** At boot, a device with ≤ 4 cores, ≤ 4 GB or an ARM user agent starts in the Pi profile. At run time, if frames stay below 40 fps for 5 s in a row (tab visible), the profile switches to Pi once per session with a toast. The setting "Switch to Pi when slow" turns this off. The debug panel's "Simulate slow frames" exercises it.
+
+**Contract 2 additions (optional, nothing breaks):** `SystemStatus.osc?: OscStatus`; `EngineClient.setSampleRate?`, `setBufferFrames?`, `setOsc?`. An engine that omits them conforms; the UI hides what's missing.
+
+**Debug panel** (`` ` ``): FPS and frame time; fault switches: unplug audio, plug in a MIDI device, CPU spike, dropouts, refuse edits, OSC traffic, simulate slow frames.
+
 ## 16. Open items
 
 | id | question | current default |
@@ -351,12 +389,38 @@ reference/    the brief and the first visual sketch
 | OPEN-5 | Pi measurements of the kit (FPS, ms per frame) | not measured yet; see PERFORMANCE.md |
 | OPEN-6 | which stock modules are `wide` | VCF offers both; others tall |
 | OPEN-7 | the Clock card was not reviewed in round 2 | as in round 1 |
-| OPEN-8 | typed value entry on click (brief) | typed entry exists on knob readouts and number boxes (from the branch); no typing on faders yet |
+| ~~OPEN-8~~ | typed value entry on click (brief) | **done in phase 4**: knobs, number boxes and faders share one parser (`parseTyped`) |
 | OPEN-9 | modulation maths: does the real engine sum in knob space (§10)? saved amounts depend on it | knob space |
 | OPEN-10 | stereo pairing is positional (Nth stereo output to Nth stereo input); the catalogue marks `stereo_pair: "stereo"` without naming L/R. A real group id would be better | declaration order |
 | OPEN-11 | poly cable weight: moot. Cable weight no longer depends on kind or poly (§9). Whether `poly` on a port is static or the runtime voice count is still unanswered | not used by the UI |
 | OPEN-12 | instance labels are stored in `ui.labels`, keyed by instance id; confirm the real format or name the field | `ui.labels` |
 | OPEN-13 | patch name is stored in `ui.name` by the autosave wrapper; should patch v2 carry a name? | `ui.name` |
 | OPEN-14 | backward cables (target left of source) draw as a wide curve across the canvas; busy in a dense patch. A routing pass that bows them vertically may help | drawn as is |
-| OPEN-15 | `example.step_sequencer` gate parameters are `0=Rest, 1=Note, 2=Tie` with `step: 1`; the placeholder grid cycles three states. The signature panel should show tie as a joining bar | placeholder grid |
+| ~~OPEN-15~~ | `example.step_sequencer` gate parameters are `0=Rest, 1=Note, 2=Tie` with `step: 1`; the placeholder grid cycles three states. The signature panel should show tie as a joining bar | **done in phase 6:** editable pitch/velocity lanes and gate tie bars |
 | OPEN-16 | the CPU figure is faked from the module count; what does the real engine report, DSP load or process CPU? | faked |
+
+
+## 18. Signature panels (phase 6)
+
+The phase-3.5 design is approved for this continuation. All signature panels use the shared controls and catalogue parameters; CHAOS-lite remains generic. `PanelBuilder` has no module-specific branches.
+
+- **Step Sequencer:** eight lanes of dotted NumberBoxes for pitch (octaves) and velocity (displayed as a percentage), and neutral Rest / Note / Tie gate buttons. A tie draws a joining bar. Run uses the LED latch; Length uses an exact number. Shortened sequences dim unused steps without deleting values. The rust playhead uses telemetry phase times the actual sequence length; stopping clears it. Width 800 px fits the lanes at mouse and touch density.
+- **Macro Oscillator:** a numbered model bank follows the catalogue's 0–23 range (no model names are supplied, so none are invented). Harmonics is L; timbre/morph are M; pitch and modulation amounts are S, followed by the LPG group. Arrow keys navigate by the displayed column count, Home/End jump to bounds. Touch uses four columns with 44 px targets. This pane subscribes to no animation loop.
+- **Mixer:** shared A/B gain faders and shared meter ballistics, driven by FakeEngine post-gain channel levels. `Telemetry.meters` stays the same numeric pair: Mixer labels it A/B, Output L/R. Hidden generic controls retain explicit modulation nodes. Effective gains feed both channel meters and the summed output.
+- **Output:** stereo meter and scope remain; width is derived from the display and rail footprints rather than the former 300 px override. The catalogue supplies no Output gain control.
+
+Six original Qt starters from `kalharbi11/wirescape` PR #192, source `96cad1cd7eeef673db6b5cbdcf09d4dc9008ab9d`, are bundled offline alongside the original six browser demos. Source IDs, parameter values, connections, config/settings/output fields and licence text survive. Browser positions are spaced for the larger controls. Real MIDI, polyphony and sound prerequisites are described in the library. This ports fixtures from an unmerged source PR; it does not imply Qt acceptance or merge.
+
+Phase-5 follow-up: audio settings tolerate zero devices, hide unsupported optional setters, refresh sample-rate choices when devices change, and call `setBufferFrames` through the engine contract. Closing Settings releases the OSC listener. An unsaved motion preference honors the OS reduced-motion setting.
+
+Pi checkpoint B / OPEN-5 remains **unmeasured on hardware**. Cloud browser and source validation are not Pi measurements. The real-engine work remains phase 7.
+
+Phase-6 cloud frame samples (20 modules / 40 cables) and the recording procedure are in PERFORMANCE.md. The drone and Macro starter LFOs are moved below the Ladder and expanded touch Macro panels so controls remain clear. Every bundled starter is checked for card overlap at mouse and touch density.
+
+## 19. Revision after phases 3.5–6
+
+Keyboard note releases remember their original pitch across octave changes. Modal dialogs contain Tab navigation, restore focus on close, and block background note/edit shortcuts. Keyboard edits pending in history commit before a new pointer gesture; click changes commit at the end of that gesture, while repeated keyboard edits still group over 350 ms. Window blur releases a held history gesture.
+
+The ticker accumulates sparse `effective` parameter deltas until replaced or deleted, including updates received while off screen or between draws. A density rebuild preserves this state; graph load/undo starts a fresh telemetry epoch. Other telemetry fields remain packet snapshots. Faders only draw a rust live marker when the effective value differs from the base and clear it when values agree.
+
+See PHASE7_HANDOFF.md for native schema and asynchronous refusal gaps. Phase 7 must adapt these explicitly rather than assuming the prototype file is already a runnable native graph.

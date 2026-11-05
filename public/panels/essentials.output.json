@@ -1,8 +1,4 @@
 {
   "code": "OUT",
-  "panes": [
-    "meter",
-    "scope"
-  ],
-  "width": 300
+  "panes": ["meter", "scope"]
 }

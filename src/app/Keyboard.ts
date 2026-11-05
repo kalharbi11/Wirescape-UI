@@ -9,7 +9,7 @@ const MAP: Record<string, number> = {
 
 export class ComputerKeyboard {
   private octave = 4;
-  private held = new Set<string>();
+  private held = new Map<string, number>();
   onOctaveChange: (o: number) => void = () => {};
 
   constructor(private readonly engine: EngineClient) {}
@@ -18,7 +18,7 @@ export class ComputerKeyboard {
 
   attach(): () => void {
     const down = (e: KeyboardEvent) => {
-      if (isTyping()) return;
+      if (isTyping() || [...document.querySelectorAll<HTMLElement>('.modal-backdrop')].some(d => d.style.display !== 'none')) return;
       if (e.code === 'KeyZ' && !e.metaKey && !e.ctrlKey) {
         this.octave = Math.max(0, this.octave - 1); this.onOctaveChange(this.octave); return;
       }
@@ -26,25 +26,28 @@ export class ComputerKeyboard {
         this.octave = Math.min(8, this.octave + 1); this.onOctaveChange(this.octave); return;
       }
       const semi = MAP[e.code];
-      if (semi === undefined || e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (semi === undefined || e.repeat || this.held.has(e.code) || e.metaKey || e.ctrlKey || e.altKey) return;
       e.preventDefault();
-      this.held.add(e.code);
-      this.engine.noteOn(this.octave * 12 + semi, 0.8);
+      const note = this.octave * 12 + semi;
+      this.held.set(e.code, note);
+      this.engine.noteOn(note, 0.8);
     };
     const up = (e: KeyboardEvent) => {
       const semi = MAP[e.code];
       if (semi === undefined || !this.held.has(e.code)) return;
+      const note = this.held.get(e.code)!;
       this.held.delete(e.code);
-      this.engine.noteOff(this.octave * 12 + semi);
+      this.engine.noteOff(note);
     };
     const blur = () => {
-      for (const code of this.held) this.engine.noteOff(this.octave * 12 + MAP[code]!);
+      for (const note of this.held.values()) this.engine.noteOff(note);
       this.held.clear();
     };
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
     window.addEventListener('blur', blur);
     return () => {
+      blur();
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
       window.removeEventListener('blur', blur);

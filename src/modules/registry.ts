@@ -152,6 +152,52 @@ export function formatValue(p: ModuleParam, v: number): { text: string; unit: st
   }
 }
 
+/** The value as shown, e.g. `1.2 kHz`, `40%` (also the starting text when typing a value). */
+export function displayValue(p: ModuleParam, v: number): string {
+  const f = formatValue(p, v);
+  return f.unit === '%' ? `${f.text}%` : f.unit ? `${f.text} ${f.unit}` : f.text;
+}
+
+const NOTE_SEMIS: Record<string, number> = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 };
+
+/**
+ * Parse a typed value (OPEN-8), FabFilter-style. Accepts what the readout
+ * shows and the obvious shorthands: `2k`, `1.2 kHz`, `A4` (Hz parameters),
+ * `350 ms`, `1.5 s`, `40%`, `−6 dB`, `+3`, or a choice label. A bare number
+ * is in the parameter's own unit (`2000` on a cutoff is 2 kHz), except a
+ * percentage, which reads as shown (`40` on a 40% knob means 40%).
+ * Returns the quantised value, or null when the text makes no sense.
+ */
+export function parseTyped(p: ModuleParam, text: string, current: number): number | null {
+  const t = text.trim().replace(/[−–]/g, '-').replace(/,/g, '.').toLowerCase();
+  if (!t) return null;
+  if (p.choices?.length) {
+    const c = p.choices.find(c => c.label.toLowerCase() === t);
+    if (c) return c.value;
+  }
+  if (p.unit === 'Hz') {
+    const n = t.match(/^([a-g])([#♯b♭]?)(-?\d)$/);
+    if (n) {
+      const semi = NOTE_SEMIS[n[1]!]! + (n[2] === '#' || n[2] === '♯' ? 1 : n[2] === 'b' || n[2] === '♭' ? -1 : 0);
+      const midi = (Number(n[3]) + 1) * 12 + semi;
+      return quantize(p, 440 * Math.pow(2, (midi - 69) / 12));
+    }
+  }
+  const m = t.match(/^([-+]?\d*\.?\d+(?:e[-+]?\d+)?)\s*(k|khz|hz|ms|s|sec|%|db|st|ct|cent|bpm|x)?$/);
+  if (!m) return null;
+  let v = Number(m[1]);
+  if (!Number.isFinite(v)) return null;
+  const suffix = m[2] ?? '';
+  const shown = formatValue(p, current).unit;
+  // A bare number is in the parameter's own unit (Hz, ms…), except a percentage, which reads as shown.
+  const unit = suffix;
+  if (unit === 'k' || unit === 'khz') v *= 1000;
+  if (p.unit === 'ms' && (unit === 's' || unit === 'sec')) v *= 1000;
+  if (p.unit === 's' && unit === 'ms') v /= 1000;
+  if (shown === '%' && (unit === '%' || !suffix)) v /= 100;
+  return quantize(p, v);
+}
+
 /** Signed with a true minus sign; `always` adds '+' to positive values. */
 function sign(n: number, decimals: number, always: boolean): string {
   const t = trim(Math.abs(n), decimals);

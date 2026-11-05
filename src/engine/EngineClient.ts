@@ -38,9 +38,22 @@ export interface SystemStatus {
   };
   /** Present only while a Clock module exists in the graph. */
   clock?: { bpm: number; running: boolean };
+  /**
+   * Optional (phase 5): OSC server status. An engine without OSC omits it and
+   * the UI hides the OSC settings. `recent` holds the last few messages in.
+   */
+  osc?: OscStatus;
 }
 
-/** Live values, pushed ~30x a second. Only what changed is included. */
+export interface OscStatus {
+  enabled: boolean;
+  port: number;
+  /** Off by default: listen on localhost only. On: accept from the network. */
+  allowNetwork: boolean;
+  recent: { time: number; address: string; args: (number | string)[] }[];
+}
+
+/** Live values, pushed ~30x a second. Effective parameters are deltas; other fields are snapshots. */
 export interface Telemetry {
   /** Monotonic tick counter. */
   tick: number;
@@ -55,7 +68,8 @@ export interface Telemetry {
   phase: Record<number, number>;
   /** Envelope position 0..1 per module (the loudest live voice). */
   envelope: Record<number, number>;
-  /** Output meters per module: [left, right] 0..1+ (above 1 = clipping). */
+  /** Panel-labelled meters per module: Output [left, right], Mixer [A, B].
+   * Linear levels 0..1+ (above 1 = clipping). */
   meters: Record<number, [number, number]>;
   /** A short scope buffer per module, -1..1. */
   scope: Record<number, Float32Array>;
@@ -108,4 +122,10 @@ export interface EngineClient {
   selectAudioDevice(id: string): void;
   listMidiDevices(): Promise<Device[]>;
   setMidiEnabled(id: string, on: boolean): void;
+
+  // ---- optional (phase 5): engines may omit these; the UI hides what's missing
+  setSampleRate?(hz: number): void;
+  setBufferFrames?(frames: number): void;
+  setOsc?(cfg: Partial<Pick<OscStatus, 'enabled' | 'port' | 'allowNetwork'>>): void;
 }
+
