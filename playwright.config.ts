@@ -19,12 +19,14 @@ export default defineConfig({
     baseURL: 'http://localhost:4173',
     headless: process.env.WIRESCAPE_HEADED !== '1',
     trace: 'retain-on-failure',
-    launchOptions: { executablePath, args: ['--no-sandbox', ...(process.env.WIRESCAPE_WAYLAND === '1' ? ['--ozone-platform=wayland'] : [])] },
+    launchOptions: { executablePath, args: ['--no-sandbox', ...(process.env.WIRESCAPE_PI_RUN === '1' ? ['--start-maximized'] : []), ...(process.env.WIRESCAPE_WAYLAND === '1' ? ['--ozone-platform=wayland'] : [])] },
   },
   projects: [
     {
       name: 'desktop',
-      use: { ...devices['Desktop Chrome'], viewport: { width: 1920, height: 1080 } },
+      use: process.env.WIRESCAPE_PI_RUN === '1'
+        ? { viewport: null }
+        : { ...devices['Desktop Chrome'], viewport: { width: 1920, height: 1080 } },
     },
   ],
   webServer: {

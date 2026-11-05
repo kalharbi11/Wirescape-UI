@@ -23,8 +23,12 @@ locked npm dependencies and Playwright's small ffmpeg helper are installed per j
 Do not substitute Xvfb for this hardware-display measurement. Leave the desktop
 available during the run: switching focus or minimizing the browser invalidates
 its performance evidence. A missing/unusable desktop fails rather than falling
-back to headless. The viewport defaults to the plan's 1920×1080; the report also
-records physical screen dimensions and DPR so differences remain visible.
+back to headless. Hosted tests retain the 1920×1080 baseline. Pi tests use an un-emulated, maximized
+browser window and record the actual desktop screen, viewport and DPR.
+
+Owner hardware: Raspberry Pi 5B rev1.0, BCM2712, 8GB RAM, MicroSD; a 14-inch,
+16:9 externally powered monitor described as 2K. The exact negotiated resolution
+and scaling are measured at run time rather than inferred from the marketing name.
 
 ## Evidence
 
