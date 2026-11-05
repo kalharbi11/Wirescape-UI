@@ -3,7 +3,7 @@
 Wirescape is a browser-based modular synth UI that targets a Raspberry Pi (Chromium) first and the laptop second. This repo holds the **design system and a working reference implementation** of its interface. The prototype brief (the app structure, fake engine, patch format, feature list) lives in the Claude Docs artifact "Wirescape UI prototype brief": https://claude.ai/artifact/XYQYjdRGwLHrUswEeSn5jx
 
 ## Status and plan
-**Read [`docs/PLAN.md`](docs/PLAN.md) first.** Phases 1–3 of the app are on branch `claude/new-session-p817y1` (old look). The next step is phase 3.5: merge that app onto `main` and reskin it to this design system. Phases 4–6 follow, and the real engine (phase 7) lives in `kalharbi11/wirescape`.
+**Read [`docs/PLAN.md`](docs/PLAN.md) first.** Phases 1–3 are built and phase 3.5 (merge and reskin to this design system) is done on branch `phase/3.5-reskin`, which goes to `main`. The app (Vite + TypeScript) now lives in this repo. Next is owner checkpoint A, then phases 4–6; the real engine (phase 7) lives in `kalharbi11/wirescape`.
 
 ## Read in this order
 
@@ -20,11 +20,26 @@ Wirescape is a browser-based modular synth UI that targets a Raspberry Pi (Chrom
 |---|---|
 | `ui/wirescape-ui-kit.html` | self-contained reference page (published at https://claude.ai/artifact/CV9V15CkywzgEpt2Q1hhb9) (no libraries, ~110 kB): tokens, control library, states + info boxes, displays, 9 stock module cards, motion, cables, archive index |
 | `ui/tokens.css` | design tokens as CSS variables |
+| `src/` | the app: catalogue, patch, engine client + `FakeEngine`, canvas, panels and widgets, ticker (layout in DESIGN §15) |
+| `tests/` | Playwright: `session.spec.ts` (23), `kit-controls.spec.ts` (12) |
+| `public/` | `wirescape_modules.json` (the 21 real modules) and `panels/<id>.json` overrides |
+| `reference/` | the prototype brief and the first visual sketch |
+| `index.html` | app entry (Vite) |
 | `docs/*.md` | spec, performance, decisions, archive, references |
 | `archive/sketches/control-jam-r1.html` | round 1 exploration (~60 ideas, incl. archived ones), published at https://claude.ai/artifact/G6WHy9jfYvcedE6b8E2P6d |
 | `archive/sketches/control-jam-r2.html` | round 2 options page, published at https://claude.ai/artifact/QgS2XUea5qkom9bWimizmM |
 
-Not in this repo (they are referenced by the brief): `WIRESCAPE_Studio_Final.html` (the first visual sketch) and `wirescape_modules.json` (the 21 real modules). Ask the user for them before building panels from data.
+The first visual sketch and the 21-module catalogue are now in `reference/` and `public/`.
+
+## Running the app
+
+```
+npm ci
+npm run dev      # Vite dev server
+npm test         # builds, serves on :4173, runs Playwright
+```
+
+Playwright uses the Chromium at `/opt/pw-browsers/chromium`, or the one named by `WIRESCAPE_CHROMIUM`. Press `` ` `` in the app for the dev panel (fps, ms/frame). `window.__wirescapeTest` is the test API (DESIGN §13).
 
 ## How the kit's code is organised
 
@@ -44,12 +59,28 @@ One `<script>`, top to bottom:
 
 The sims (`sims`, `S`, `ENV`, `onStep`) stand in for the brief's `EngineClient.onTelemetry`. In the real app they become telemetry fields; the drawing code doesn't change.
 
-## Mapping to the app structure in the brief
+## Mapping: kit → where it now lives
 
-- `src/theme/` ← `ui/tokens.css`, `C`/`THEMES`
-- `src/panels/` ← `knob`, `fader`, `meter`, `slider`, `seg`, `detent`, `toggle`, `numBox`, `tape`, `xy`, `vcfDisplay`, `waveCanvas`, `adsrView`, `attach2` / info boxes, plus the role → control rules (DESIGN §4.2)
-- `src/canvas/` ← `card`, `jack`, cable styles (DESIGN §9), cable sag spring (kit A4)
-- `src/engine/FakeEngine` ← the kit's `sims` and `S`
+| kit | app |
+|---|---|
+| `ui/tokens.css`, `C` / `THEMES` | `src/theme/tokens.css` (old token names kept as aliases), `src/theme/theme.ts` |
+| `knob` | `src/panels/widgets/Knob.ts` |
+| `numBox` | `NumberBox.ts` |
+| `fader` | `Fader.ts` |
+| `seg` | `Segmented.ts` |
+| `toggle` | `Toggle.ts` |
+| `attach2`, `sumInfo`, `modInfo` | `InfoBox.ts` |
+| `vcfDisplay` | `FilterDisplay.ts` |
+| `waveCanvas` | `WavePreview.ts` |
+| `adsrView` | `EnvelopeCurve.ts` |
+| `meter` | `Meter.ts` |
+| role → control rules (DESIGN §4.2) | `src/panels/layouts.ts` |
+| `card`, `jack` | `src/canvas/ModuleCard.ts` |
+| cable styles (DESIGN §9), sag spring | `src/canvas/CableLayer.ts` |
+| `sims`, `S` | `src/engine/FakeEngine.ts` |
+| the single `loop()` | `src/runtime/Ticker.ts` |
+
+Not built from the kit: `slider`, `detent`, `tape`, `xy` (no catalogue parameter needs them yet).
 
 ## Working rules
 
