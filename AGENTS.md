@@ -2,6 +2,9 @@
 
 Wirescape is a browser-based modular synth UI that targets a Raspberry Pi (Chromium) first and the laptop second. This repo holds the **design system and a working reference implementation** of its interface. The prototype brief (the app structure, fake engine, patch format, feature list) lives in the Claude Docs artifact "Wirescape UI prototype brief": https://claude.ai/artifact/XYQYjdRGwLHrUswEeSn5jx
 
+## Status and plan
+**Read [`docs/PLAN.md`](docs/PLAN.md) first.** Phases 1–3 of the app are on branch `claude/new-session-p817y1` (old look). The next step is phase 3.5: merge that app onto `main` and reskin it to this design system. Phases 4–6 follow, and the real engine (phase 7) lives in `kalharbi11/wirescape`.
+
 ## Read in this order
 
 1. [`docs/DESIGN.md`](docs/DESIGN.md): the spec (tokens, formatting, controls, states, modulation, displays, modules, motion, cables, open items).
