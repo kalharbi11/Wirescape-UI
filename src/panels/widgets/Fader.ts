@@ -1,6 +1,6 @@
 import type { ModuleParam } from '../../modules/types';
 import type { Ticker } from '../../runtime/Ticker';
-import { formatValue, normToValue, quantize, valueToNorm } from '../../modules/registry';
+import { formatValue, normToValue, quantize, valueToNorm, parseTyped, displayValue } from '../../modules/registry';
 import { el } from '../../app/dom';
 
 export interface FaderOptions {
@@ -50,6 +50,9 @@ export class Fader {
 
     this.valueEl = el('div', 'fader-value');
     this.root.append(this.track, el('div', 'control-label fader-label', p.name), this.valueEl);
+    // OPEN-8: click the value to type one (same parser as knobs and number boxes).
+    this.valueEl.title = 'Click to type a value';
+    this.valueEl.addEventListener('click', () => this.promptValue());
 
     this.track.addEventListener('pointerdown', e => this.onDown(e));
     this.track.addEventListener('dblclick', e => {
@@ -139,5 +142,33 @@ export class Fader {
     this.track.addEventListener('pointermove', move);
     this.track.addEventListener('pointerup', up);
     this.track.addEventListener('pointercancel', up);
+  }
+
+  private promptValue(): void {
+    const p = this.o.param;
+    const input = el('input', 'readout-input') as HTMLInputElement;
+    input.value = displayValue(p, this.o.getValue());
+    input.dataset.testid = `readout-input-${this.o.moduleId}-${p.id}`;
+    input.setAttribute('aria-label', `${p.name} value`);
+    this.valueEl.replaceWith(input);
+    input.focus(); input.select();
+    let done = false;
+    const finish = (apply: boolean) => {
+      if (done) return;
+      done = true;
+      if (apply) {
+        const v = parseTyped(p, input.value, this.o.getValue());
+        if (v !== null) this.o.setValue(v, true);
+      }
+      input.replaceWith(this.valueEl);
+      this.refresh();
+    };
+    input.addEventListener('keydown', e => {
+      e.stopPropagation();
+      if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+      if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+    });
+    input.addEventListener('blur', () => finish(true));
+    input.addEventListener('pointerdown', e => e.stopPropagation());
   }
 }
