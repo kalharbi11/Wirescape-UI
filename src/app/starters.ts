@@ -1,10 +1,10 @@
 import type { PatchV2 } from '../patch/types';
-import qtMinimal from './qt-starters/qt-minimal.json';
-import qtLfoFilter from './qt-starters/qt-lfo-filter.json';
-import qtMidi from './qt-starters/qt-midi.json';
-import qtPoly from './qt-starters/qt-poly.json';
-import qtChaos from './qt-starters/qt-chaos.json';
-import qtMacro from './qt-starters/qt-macro.json';
+import qtMinimal from './qt-starters/qt-minimal.json' with { type: 'json' };
+import qtLfoFilter from './qt-starters/qt-lfo-filter.json' with { type: 'json' };
+import qtMidi from './qt-starters/qt-midi.json' with { type: 'json' };
+import qtPoly from './qt-starters/qt-poly.json' with { type: 'json' };
+import qtChaos from './qt-starters/qt-chaos.json' with { type: 'json' };
+import qtMacro from './qt-starters/qt-macro.json' with { type: 'json' };
 
 export interface Starter { id: string; name: string; note: string; patch: () => PatchV2 }
 

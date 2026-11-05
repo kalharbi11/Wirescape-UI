@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { STARTERS, DEFAULT_STARTER } from '../src/app/starters';
-import catalogue from '../public/wirescape_modules.json';
+import catalogue from '../public/wirescape_modules.json' with { type: 'json' };
 import { boot, settle } from './helpers';
 
 const qt = STARTERS.filter(s => s.id.startsWith('qt-'));
