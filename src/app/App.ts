@@ -5,7 +5,7 @@ import { PatchDoc } from '../patch/PatchDoc';
 import { History } from '../patch/History';
 import type { Connection, PatchV2 } from '../patch/types';
 import { FakeEngine } from '../engine/FakeEngine';
-import { EngineRefusal, type SystemStatus } from '../engine/EngineClient';
+import { EngineRefusal, type SystemStatus, type EngineClient } from '../engine/EngineClient';
 import { Ticker } from '../runtime/Ticker';
 import { PatchCanvas, type Selection } from '../canvas/PatchCanvas';
 import type { PortDirection } from '../modules/types';
@@ -727,6 +727,7 @@ export class App {
   // ---- settings ---------------------------------------------------------
 
   private openSettings(): void {
+    const engine: EngineClient = this.engine;
     this.settings.body.replaceChildren();
     const b = this.settings.body;
     let stopMonitor: (() => void) | undefined;
@@ -734,7 +735,7 @@ export class App {
     b.append(el('h3', 'settings-group', 'Audio'));
     const audioFields = el('div', 'settings-audio');
     b.append(audioFields);
-    void this.engine.listAudioDevices().then(devices => {
+    void engine.listAudioDevices().then(devices => {
       // The dialog may have been rebuilt while device enumeration was pending.
       if (!b.contains(audioFields)) return;
       if (!devices.length) {
@@ -744,7 +745,7 @@ export class App {
         return;
       }
       const currentId = this.lastStatus?.audio.deviceId ?? devices[0]!.id;
-      const rates = select([], '', v => this.engine.setSampleRate?.(Number(v)));
+      const rates = select([], '', v => engine.setSampleRate?.(Number(v)));
       rates.dataset.testid = 'audio-rate';
       const refreshRates = (deviceId: string) => {
         const dev = devices.find(d => d.id === deviceId);
@@ -758,24 +759,24 @@ export class App {
         // Do not imply an unsupported rate is active; ask the engine to pick it.
         if (!rates.value && rates.options.length) {
           rates.selectedIndex = 0;
-          this.engine.setSampleRate?.(Number(rates.value));
+          engine.setSampleRate?.(Number(rates.value));
         }
       };
       const sel = select(devices.map(d => ({ value: d.id, label: d.name })), currentId, v => {
-        this.engine.selectAudioDevice(v);
-        if (this.engine.setSampleRate) refreshRates(v);
+        engine.selectAudioDevice(v);
+        if (engine.setSampleRate) refreshRates(v);
       });
       sel.dataset.testid = 'audio-device';
       audioFields.append(field('Output device', sel));
-      if (this.engine.setSampleRate) {
+      if (engine.setSampleRate) {
         refreshRates(currentId);
         audioFields.append(field('Sample rate', rates));
       }
-      if (this.engine.setBufferFrames) {
+      if (engine.setBufferFrames) {
         const buffer = select(
           [64, 128, 256, 512, 1024].map(n => ({ value: String(n), label: `${n} frames` })),
           String(this.lastStatus?.audio.bufferFrames ?? 256),
-          v => this.engine.setBufferFrames?.(Number(v)),
+          v => engine.setBufferFrames?.(Number(v)),
         );
         buffer.dataset.testid = 'audio-buffer';
         audioFields.append(field('Buffer size', buffer, 'Lower is tighter, and more likely to drop out'));
@@ -786,27 +787,27 @@ export class App {
 
     b.append(el('h3', 'settings-group', 'MIDI'));
     for (const d of this.lastStatus?.midi.devices ?? []) {
-      b.append(field(d.name, switchButton(d.enabled !== false, on => this.engine.setMidiEnabled(d.id, on))));
+      b.append(field(d.name, switchButton(d.enabled !== false, on => engine.setMidiEnabled(d.id, on))));
     }
 
     const osc = this.lastStatus?.osc;
-    if (osc && this.engine.setOsc) {
+    if (osc && engine.setOsc) {
       b.append(el('h3', 'settings-group', 'OSC'));
-      const on = switchButton(osc.enabled, v => this.engine.setOsc!({ enabled: v }));
+      const on = switchButton(osc.enabled, v => engine.setOsc!({ enabled: v }));
       on.dataset.testid = 'osc-enabled';
       b.append(field('OSC server', on, 'Lets other apps change parameters by message'));
       const port = el('input', 'input-text') as HTMLInputElement;
       port.type = 'number'; port.min = '1024'; port.max = '65535'; port.value = String(osc.port);
       port.dataset.testid = 'osc-port';
       port.addEventListener('change', () => {
-        try { this.engine.setOsc!({ port: Number(port.value) }); }
+        try { engine.setOsc!({ port: Number(port.value) }); }
         catch (err) {
           this.toasts.show(err instanceof EngineRefusal ? err.message : 'That port was refused.', 'error');
           port.value = String(this.lastStatus?.osc?.port ?? 9000);
         }
       });
       b.append(field('Port', port));
-      const net = switchButton(osc.allowNetwork, v => this.engine.setOsc!({ allowNetwork: v }));
+      const net = switchButton(osc.allowNetwork, v => engine.setOsc!({ allowNetwork: v }));
       net.dataset.testid = 'osc-network';
       b.append(field('Allow network', net, 'Off: this computer only. On: any device on your network can control the patch'));
       const mon = el('div', 'osc-monitor');
@@ -818,7 +819,7 @@ export class App {
           : [el('div', 'osc-line muted', this.lastStatus?.osc?.enabled ? 'Waiting for messages…' : 'OSC is off')]));
       };
       paint();
-      stopMonitor = this.engine.onStatus(paint);
+      stopMonitor = engine.onStatus(paint);
       b.append(field('Recent messages', mon));
     }
 
