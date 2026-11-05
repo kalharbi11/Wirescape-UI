@@ -415,4 +415,4 @@ Phase-5 follow-up: audio settings tolerate zero devices, hide unsupported option
 
 Pi checkpoint B / OPEN-5 remains **unmeasured on hardware**. Cloud browser and source validation are not Pi measurements. The real-engine work remains phase 7.
 
-Phase-6 cloud frame samples (20 modules / 40 cables) and the recording procedure are in PERFORMANCE.md. The original drone starter's LFO is moved below the Ladder panel so controls remain clear. Every bundled starter is checked for card overlap at mouse and touch density.
+Phase-6 cloud frame samples (20 modules / 40 cables) and the recording procedure are in PERFORMANCE.md. The drone and Macro starter LFOs are moved below the Ladder and expanded touch Macro panels so controls remain clear. Every bundled starter is checked for card overlap at mouse and touch density.

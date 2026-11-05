@@ -127,7 +127,7 @@ Owner authorization: assume phase 3.5 approved, preserve its design language, fi
 | sequencer | shared exact-value controls, explicit Rest/Note/Tie, joining bars, actual-length telemetry playhead; values outside length retained |
 | Macro models | numbered values from catalogue; no invented model names or fake waveform preview; responsive keyboard navigation |
 | Mixer/Output | existing faders and meter style; telemetry A/B after gain for Mixer, L/R for Output; Output width derived, no invented output controls |
-| starter polish | move the drone LFO below the Ladder; guard all browser and Qt starter layouts against overlapping cards at both densities |
+| starter polish | move the drone LFO below the Ladder and the Macro LFO below its expanded touch panel; guard all browser and Qt starter layouts against overlapping cards at both densities |
 | Qt starters | port six fixtures from PR #192 at `96cad1cd7eeef673db6b5cbdcf09d4dc9008ab9d`; keep existing browser demos so their documented session remains reproducible |
 | system audit | optional audio capabilities hidden; no-device safe; device rates refreshed; OSC unsubscribed on close; reduced-motion default matches OS |
 | automation | GitHub Actions installs locked dependencies, typechecks/builds and runs Chromium regression suite; failure traces retained |
