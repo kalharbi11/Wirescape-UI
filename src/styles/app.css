@@ -213,7 +213,7 @@ button { cursor: pointer; }
 }
 .module-header-slot { display: flex; align-items: center; flex: none; }
 .module-header { flex: none; }
-.module-body { position: relative; flex: 1; display: flex; flex-direction: column; justify-content: center; padding-top: 12px; padding-bottom: 14px; }
+.module-body { position: relative; flex: 1; display: flex; flex-direction: column; justify-content: center; padding-top: 22px; padding-bottom: 24px; }
 .panel-core { position: relative; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 0 12px; }
 .panel-core.shape-wide { flex-direction: row; align-items: center; gap: 18px; }
 .panel-displays { display: flex; flex-direction: column; gap: 8px; align-items: stretch; align-self: stretch; }

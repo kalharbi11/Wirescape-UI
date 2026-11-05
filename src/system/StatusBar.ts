@@ -22,6 +22,7 @@ export class StatusBar {
   private cpu: HTMLElement;
   private drop: HTMLElement;
   private midi: HTMLElement;
+  private osc: HTMLElement;
   private clock: HTMLElement;
   private clockBtn: HTMLButtonElement;
   private last: SystemStatus | null = null;
@@ -42,6 +43,9 @@ export class StatusBar {
     left.append(this.audio, this.audioDetail, this.cpu, this.drop);
 
     const right = el('div', 'status-right');
+    this.osc = el('span', 'status-detail status-osc');
+    this.osc.dataset.testid = 'status-osc';
+    this.osc.style.display = 'none';
     this.midi = el('span', 'status-midi');
     this.midi.dataset.testid = 'status-midi';
     this.clock = el('span', 'status-detail');
@@ -62,7 +66,7 @@ export class StatusBar {
     settings.type = 'button';
     settings.dataset.testid = 'open-settings';
     settings.addEventListener('click', () => hooks.onOpenSettings());
-    right.append(this.clock, this.clockBtn, this.midi, panic, settings);
+    right.append(this.clock, this.clockBtn, this.osc, this.midi, panic, settings);
 
     this.root.append(left, right);
   }
@@ -89,6 +93,16 @@ export class StatusBar {
       chip.append(dot, document.createTextNode(d.name));
       chip.title = `${d.name} — ${d.enabled ? 'enabled' : 'disabled'}`;
       this.midi.append(chip);
+    }
+
+    if (s.osc?.enabled) {
+      this.osc.style.display = '';
+      const last = s.osc.recent[0];
+      this.osc.textContent = `OSC ${s.osc.port} · ${s.osc.allowNetwork ? 'NETWORK' : 'LOCAL'}`;
+      this.osc.title = last ? `Last: ${last.address} ${last.args.join(' ')}` : 'OSC on, no messages yet';
+      this.osc.classList.toggle('warn', s.osc.allowNetwork);
+    } else {
+      this.osc.style.display = 'none';
     }
 
     if (s.clock) {

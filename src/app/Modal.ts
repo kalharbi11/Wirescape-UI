@@ -72,12 +72,15 @@ export function select(options: { value: string; label: string }[], value: strin
 export function switchButton(on: boolean, onChange: (v: boolean) => void): HTMLButtonElement {
   const b = el('button', `toggle${on ? ' on' : ''}`) as HTMLButtonElement;
   b.type = 'button';
-  b.append(el('span'));
+  // Same LED latch as the panel toggles (DESIGN §4.2, OPEN-1 default).
+  const state = el('span', 'toggle-state', on ? 'ON' : 'OFF');
+  b.append(el('i', 'led'), state);
   b.setAttribute('aria-pressed', String(on));
   b.addEventListener('click', () => {
     const next = !b.classList.contains('on');
     b.classList.toggle('on', next);
     b.setAttribute('aria-pressed', String(next));
+    state.textContent = next ? 'ON' : 'OFF';
     onChange(next);
   });
   return b;

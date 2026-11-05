@@ -9,6 +9,8 @@ export class DevPanel {
   private frame: HTMLElement;
   private raf = 0;
   private open = false;
+  /** Read by the frame watchdog in App: pretend the device is slow. */
+  simulateSlow = false;
 
   constructor(private readonly engine: FakeEngine, private readonly ticker: Ticker) {
     this.root = el('div', 'dev-panel');
@@ -43,6 +45,15 @@ export class DevPanel {
     add('cpuSpike', 'CPU spike');
     add('dropouts', 'Dropouts');
     add('refuseEdits', 'Refuse edits');
+    add('oscTraffic', 'OSC traffic (while OSC is on)');
+    const slow = el('button', 'dev-switch', 'Simulate slow frames') as HTMLButtonElement;
+    slow.type = 'button';
+    slow.dataset.testid = 'debug-slowFrames';
+    slow.addEventListener('click', () => {
+      this.simulateSlow = !this.simulateSlow;
+      slow.classList.toggle('on', this.simulateSlow);
+    });
+    switches.append(slow);
 
     this.root.append(head, this.fps, this.frame, switches);
   }

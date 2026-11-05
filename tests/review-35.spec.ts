@@ -57,7 +57,7 @@ test.describe('3.5 review', () => {
     const node = await page.evaluate(() => {
       const card = document.querySelector<HTMLElement>('[data-testid="module-2"]')!;
       const el = document.querySelector<HTMLElement>('[data-testid="param-port-2-offset"]')!;
-      return { x: card.offsetLeft, y: card.offsetTop + 30 + parseFloat(el.style.top) };
+      return { x: card.offsetLeft, y: card.offsetTop + 36 + parseFloat(el.style.top) };
     });
     expect(Math.abs(end.x - node.x)).toBeLessThan(1.5);
     expect(Math.abs(end.y - node.y)).toBeLessThan(1.5);

@@ -9,6 +9,8 @@ export interface Preferences {
   uiScale: number;
   theme: ThemeName;
   showPortLabels: boolean;
+  /** Switch to the Pi profile by itself when frames stay slow (phase 5). */
+  autoProfile: boolean;
 }
 
 const KEY = 'wirescape.prefs.v1';
@@ -20,6 +22,7 @@ export const DEFAULT_PREFS: Preferences = {
   uiScale: 1,
   theme: 'light',
   showPortLabels: true,
+  autoProfile: true,
 };
 
 export function loadPrefs(): Preferences {

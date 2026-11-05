@@ -230,7 +230,8 @@ export class App {
     this.ticker.throttleHz = this.prefs.profile === 'pi' ? 30 : 0;
     this.ticker.start();
     this.engine.onTelemetry(t => this.ticker.push(t));
-    this.engine.onStatus(s => { this.lastStatus = s; this.statusBar.update(s); });
+    this.engine.onStatus(s => { this.announceStatus(this.lastStatus, s); this.lastStatus = s; this.statusBar.update(s); });
+    this.startFrameWatchdog();
     this.engine.start();
     this.keyboard.attach();
 
@@ -277,6 +278,52 @@ export class App {
     this.refreshDirty();
     this.history?.reset();
     this.pasteCount = 0;
+  }
+
+  // ---- system (phase 5) ---------------------------------------------------
+
+  /** Toasts for things that change under the user: devices coming and going, audio dropping. */
+  private announceStatus(prev: SystemStatus | null, s: SystemStatus): void {
+    if (!prev) return;
+    const before = new Map(prev.midi.devices.map(d => [d.id, d]));
+    const after = new Map(s.midi.devices.map(d => [d.id, d]));
+    for (const [id, d] of after) if (!before.has(id)) this.toasts.show(`MIDI: ${d.name} connected.`);
+    for (const [id, d] of before) if (!after.has(id)) this.toasts.show(`MIDI: ${d.name} disconnected.`);
+    const a = prev.audio.state, b = s.audio.state;
+    if (a !== b) {
+      if (b === 'device-lost') this.toasts.show(`Audio device lost: ${s.audio.deviceName ?? 'output'}. Reconnecting when it returns.`, 'error');
+      else if (b === 'no-device') this.toasts.show('No audio device. Pick one in Settings.', 'error');
+      else if (b === 'running' && (a === 'reconnecting' || a === 'device-lost' || a === 'no-device')) this.toasts.show('Audio is back.');
+    }
+  }
+
+  /**
+   * The Pi profile switches itself on (once a session) when frames stay below
+   * 40 fps for 5 seconds in a row, unless the user turned that off.
+   */
+  private startFrameWatchdog(): void {
+    let slowFor = 0;
+    let fired = false;
+    setInterval(() => {
+      if (fired || !this.prefs.autoProfile || this.prefs.profile === 'pi' || document.hidden) { slowFor = 0; return; }
+      const fps = this.devPanel.simulateSlow ? 20 : this.ticker.fps;
+      slowFor = fps > 0 && fps < 40 ? slowFor + 1 : 0;
+      if (slowFor >= 5) {
+        fired = true;
+        this.setPref({ profile: 'pi' });
+        this.toasts.show('Frames were slow, so the Pi profile is on. You can change this in Settings.');
+      }
+    }, 1000);
+  }
+
+  private checkForUpdates(btn: HTMLButtonElement, out: HTMLElement): void {
+    btn.disabled = true;
+    out.textContent = 'Checking…';
+    // Stub: the real app asks its update channel. Nothing leaves the machine here.
+    setTimeout(() => {
+      btn.disabled = false;
+      out.textContent = `Up to date · ${__APP_VERSION__} · checked ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    }, 600);
   }
 
   // ---- undo / redo --------------------------------------------------------
@@ -697,13 +744,60 @@ export class App {
         v => this.engine.setBuffer(Number(v)),
       );
       buffer.dataset.testid = 'audio-buffer';
+      const dev = devices.find(d => d.id === (this.lastStatus?.audio.deviceId ?? devices[0]!.id));
+      const rates = select(
+        (dev?.sampleRates ?? [48000]).map(n => ({ value: String(n), label: `${(n / 1000).toFixed(1)} kHz` })),
+        String(this.lastStatus?.audio.sampleRate ?? 48000),
+        v => this.engine.setSampleRate?.(Number(v)),
+      );
+      rates.dataset.testid = 'audio-rate';
       b.insertBefore(field('Output device', sel), b.children[1] ?? null);
-      b.insertBefore(field('Buffer size', buffer, 'Lower is tighter, and more likely to drop out'), b.children[2] ?? null);
+      b.insertBefore(field('Sample rate', rates), b.children[2] ?? null);
+      b.insertBefore(field('Buffer size', buffer, 'Lower is tighter, and more likely to drop out'), b.children[3] ?? null);
     });
 
     b.append(el('h3', 'settings-group', 'MIDI'));
     for (const d of this.lastStatus?.midi.devices ?? []) {
       b.append(field(d.name, switchButton(d.enabled !== false, on => this.engine.setMidiEnabled(d.id, on))));
+    }
+
+    const osc = this.lastStatus?.osc;
+    if (osc && this.engine.setOsc) {
+      b.append(el('h3', 'settings-group', 'OSC'));
+      const on = switchButton(osc.enabled, v => this.engine.setOsc!({ enabled: v }));
+      on.dataset.testid = 'osc-enabled';
+      b.append(field('OSC server', on, 'Lets other apps change parameters by message'));
+      const port = el('input', 'input-text') as HTMLInputElement;
+      port.type = 'number'; port.min = '1024'; port.max = '65535'; port.value = String(osc.port);
+      port.dataset.testid = 'osc-port';
+      port.addEventListener('change', () => {
+        try { this.engine.setOsc!({ port: Number(port.value) }); }
+        catch (err) {
+          this.toasts.show(err instanceof EngineRefusal ? err.message : 'That port was refused.', 'error');
+          port.value = String(this.lastStatus?.osc?.port ?? 9000);
+        }
+      });
+      b.append(field('Port', port));
+      const net = switchButton(osc.allowNetwork, v => this.engine.setOsc!({ allowNetwork: v }));
+      net.dataset.testid = 'osc-network';
+      b.append(field('Allow network', net, 'Off: this computer only. On: any device on your network can control the patch'));
+      const mon = el('div', 'osc-monitor');
+      mon.dataset.testid = 'osc-monitor';
+      const paint = () => {
+        const r = this.lastStatus?.osc?.recent ?? [];
+        mon.replaceChildren(...(r.length
+          ? r.map(m => el('div', 'osc-line', `${m.address}  ${m.args.join(' ')}`))
+          : [el('div', 'osc-line muted', this.lastStatus?.osc?.enabled ? 'Waiting for messages…' : 'OSC is off')]));
+      };
+      paint();
+      // onStatus calls back at once, before the box is in the dialog; stop listening once it is gone.
+      let seen = false;
+      const off = this.engine.onStatus(() => {
+        if (mon.isConnected) seen = true;
+        else if (seen) { queueMicrotask(() => off()); return; }
+        paint();
+      });
+      b.append(field('Recent messages', mon));
     }
 
     b.append(el('h3', 'settings-group', 'Interface'));
@@ -713,6 +807,9 @@ export class App {
       [{ value: 'normal', label: 'Normal' }, { value: 'pi', label: 'Raspberry Pi' }],
       this.prefs.profile, v => this.setPref({ profile: v as Preferences['profile'] }),
     ), 'Pi lowers telemetry drawing to 30 Hz and drops shadows'));
+    const auto = switchButton(this.prefs.autoProfile, v => this.setPref({ autoProfile: v }));
+    auto.dataset.testid = 'auto-profile';
+    b.append(field('Switch to Pi when slow', auto, 'Turns the Pi profile on if frames stay under 40 fps for 5 s'));
     b.append(field('Hit areas', select(
       [{ value: 'mouse', label: 'Mouse and keyboard' }, { value: 'touch', label: 'Touch' }],
       this.prefs.hit, v => this.setPref({ hit: v as Preferences['hit'] }),
@@ -729,9 +826,17 @@ export class App {
 
     b.append(el('h3', 'settings-group', 'About'));
     const about = el('div', 'about');
+    const upd = el('button', 'action', 'Check for updates') as HTMLButtonElement;
+    upd.type = 'button';
+    upd.dataset.testid = 'check-updates';
+    const updOut = el('div', 'muted');
+    updOut.dataset.testid = 'update-status';
+    upd.addEventListener('click', () => this.checkForUpdates(upd, updOut));
     about.append(
       el('div', '', `Wirescape Studio prototype · ${__APP_VERSION__}`),
+      el('div', 'muted', `Build ${__BUILD__} · ${navigator.hardwareConcurrency ?? '?'} cores · profile ${this.prefs.profile}`),
       el('div', 'muted', 'Visual prototype. No audio engine, no DSP, no MIDI.'),
+      upd, updOut,
     );
     b.append(about);
 
@@ -804,3 +909,4 @@ export class App {
 }
 
 declare const __APP_VERSION__: string;
+declare const __BUILD__: string;

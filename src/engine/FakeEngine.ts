@@ -1,5 +1,5 @@
 import type {
-  EngineClient, Telemetry, SystemStatus, Device, EngineError,
+  EngineClient, OscStatus, Telemetry, SystemStatus, Device, EngineError,
 } from './EngineClient';
 import { EngineRefusal } from './EngineClient';
 import type { PatchV2, Connection } from '../patch/types';
@@ -17,6 +17,8 @@ export interface DebugSwitches {
   cpuSpike: boolean;
   dropouts: boolean;
   refuseEdits: boolean;
+  /** Fake a stream of incoming OSC messages while OSC is on. */
+  oscTraffic: boolean;
 }
 
 /**
@@ -47,8 +49,9 @@ export class FakeEngine implements EngineClient {
 
   debug: DebugSwitches = {
     unplugAudio: false, extraMidiDevice: false, cpuSpike: false,
-    dropouts: false, refuseEdits: false,
+    dropouts: false, refuseEdits: false, oscTraffic: true,
   };
+  private osc: OscStatus = { enabled: false, port: 9000, allowNetwork: false, recent: [] };
 
   private status: SystemStatus = {
     audio: {
@@ -218,6 +221,25 @@ export class FakeEngine implements EngineClient {
   setMidiEnabled(id: string, on: boolean): void {
     const d = this.midiDevices.find(d => d.id === id);
     if (d) { d.enabled = on; this.pushStatus(); }
+  }
+
+  setBufferFrames(frames: number): void { this.setBuffer(frames); }
+
+  setSampleRate(hz: number): void {
+    const d = this.audioDevices.find(d => d.id === this.status.audio.deviceId);
+    if (d?.sampleRates && !d.sampleRates.includes(hz)) return;
+    this.status.audio.sampleRate = hz;
+    this.recomputeLatency();
+    this.pushStatus();
+  }
+
+  setOsc(cfg: Partial<Pick<OscStatus, 'enabled' | 'port' | 'allowNetwork'>>): void {
+    if (cfg.port !== undefined && (!Number.isInteger(cfg.port) || cfg.port < 1024 || cfg.port > 65535)) {
+      throw new EngineRefusal({ code: 'refused', message: 'OSC port must be a whole number from 1024 to 65535.' });
+    }
+    Object.assign(this.osc, cfg);
+    if (!this.osc.enabled) this.osc.recent = [];
+    this.pushStatus();
   }
 
   setBuffer(frames: number): void {
@@ -601,6 +623,15 @@ export class FakeEngine implements EngineClient {
     }
     if (this.debug.dropouts && this.tick % 20 === 0) a.dropouts++;
 
+    // OSC: a fake message about every 1.5 s while the server is on.
+    if (this.osc.enabled && this.debug.oscTraffic && this.tick % 45 === 0) {
+      const ids = [...this.nodes.keys()];
+      const id = ids.length ? ids[this.tick % ids.length] : 1;
+      this.osc.recent = [{ time: this.time, address: `/wirescape/${id}/param`, args: [Math.round(Math.random() * 1000) / 1000] },
+        ...this.osc.recent].slice(0, 8);
+      this.pushStatus();
+    }
+
     const base = 4 + this.nodes.size * 1.7 + this.voices.length * 0.9;
     const target = Math.min(99, this.debug.cpuSpike ? base + 62 : base);
     a.cpuPercent = Math.round((a.cpuPercent + (target - a.cpuPercent) * 0.25) * 10) / 10;
@@ -623,6 +654,7 @@ export class FakeEngine implements EngineClient {
     return {
       audio: { ...this.status.audio },
       midi: { devices: this.midiDevices.map(d => ({ ...d })), activity },
+      osc: { ...this.osc, recent: this.osc.recent.map(m => ({ ...m, args: [...m.args] })) },
       ...(clockNode
         ? { clock: { bpm: clockNode.params.bpm ?? 120, running: (clockNode.params.run ?? 1) >= 0.5 } }
         : {}),

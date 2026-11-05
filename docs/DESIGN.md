@@ -199,7 +199,7 @@ Each module type keeps its own size (no grid), but the size comes from data.
 
 - **Width** is derived: input gutter + output gutter + the widest row of controls (or the widest pane; in a `wide` card, pane + controls), plus 12 px padding per side. The header must also fit. The override key `width` replaces it. Gutters are sized from the longest port label: 22 + 5.6 px per character, at most 132 px, 14 px with no ports.
 - **Height is measured once**, after the card is in the DOM, because the controls are content-sized. Measuring is batched for a whole patch (Pi rule 8). Port anchors are then derived from that height and never read again. A minimum height keeps the port pitch.
-- **Ports** sit on side rails and are spread evenly over the card height. `HEADER_H` = 30 px. Minimum port pitch 30 px (mouse), 42 px (touch). Minimum height = `HEADER_H` + (port rows + 1) × pitch.
+- **Ports** sit on side rails and are spread evenly over the card height. `HEADER_H` = 36 px (raised from 30 in the owner review so header controls clear the border); the body has 22 px padding above and 24 px below the controls. Minimum port pitch 30 px (mouse), 42 px (touch). Minimum height = `HEADER_H` + (port rows + 1) × pitch.
 - Control footprints used for the width: knob L 150, M 84, S 58 px; fader 46; select 150; item gap 10.
 - Fonts (IBM Plex, `@fontsource`, latin 400/500/600) are bundled so the Pi works offline. Boot waits for them because heights are measured.
 - A test checks every module in both hit profiles for overflow.
@@ -351,6 +351,32 @@ public/
 tests/        session.spec.ts, kit-controls.spec.ts, helpers.ts
 reference/    the brief and the first visual sketch
 ```
+
+## 17. System (phase 5)
+
+Everything here runs against the fake engine; the real engine fills the same fields.
+
+**Status bar** (bottom): audio state chip (`STARTING`, `RUNNING`, `NO DEVICE`, `DEVICE LOST`, `RECONNECTING`); device · sample rate · buffer · latency; CPU % (rust above 80); dropouts (rust above 0); BPM and run/stop when a Clock exists; OSC chip `OSC 9000 · LOCAL` while OSC is on (rust `NETWORK` when it accepts from the network); one chip per MIDI device with an activity dot; PANIC; SETTINGS.
+
+**Toasts for changes under the user:** a MIDI device connected or disconnected; the audio device lost ("reconnecting when it returns"), no device, and "Audio is back".
+
+**Settings**, grouped:
+
+| group | items |
+|---|---|
+| Audio | output device, sample rate (the device's rates), buffer size (latency follows) |
+| MIDI | each device on/off (all on by default) |
+| OSC | server on/off (off by default), port (1024–65535; anything else is refused and rolled back), allow network (off = localhost only), recent messages (last 8, live) |
+| Interface | motion, performance profile, **switch to Pi when slow** (on by default), hit areas, UI scale, theme, port labels |
+| About | version, build (git sha · date), cores, profile; **Check for updates** (a stub: answers "Up to date" after 0.6 s, nothing leaves the machine) |
+
+On/off settings use the LED latch (OPEN-1 default), the same as panel toggles.
+
+**Pi profile, automatic.** At boot, a device with ≤ 4 cores, ≤ 4 GB or an ARM user agent starts in the Pi profile. At run time, if frames stay below 40 fps for 5 s in a row (tab visible), the profile switches to Pi once per session with a toast. The setting "Switch to Pi when slow" turns this off. The debug panel's "Simulate slow frames" exercises it.
+
+**Contract 2 additions (optional, nothing breaks):** `SystemStatus.osc?: OscStatus`; `EngineClient.setSampleRate?`, `setBufferFrames?`, `setOsc?`. An engine that omits them conforms; the UI hides what's missing.
+
+**Debug panel** (`` ` ``): FPS and frame time; fault switches: unplug audio, plug in a MIDI device, CPU spike, dropouts, refuse edits, OSC traffic, simulate slow frames.
 
 ## 16. Open items
 
