@@ -1,5 +1,7 @@
 # Wirescape-UI
 
+UI development is moving to [kalharbi11/wirescape — apps/studio](https://github.com/kalharbi11/wirescape/tree/main/apps/studio) with its Git history preserved ([import PR](https://github.com/kalharbi11/wirescape/pull/238)); after that PR merges, this repository is retained as read-only history.
+
 Design system and reference implementation for the Wirescape modular synth interface (browser UI, Raspberry Pi first).
 
 - **Start here:** [AGENTS.md](AGENTS.md), then [docs/PLAN.md](docs/PLAN.md)
