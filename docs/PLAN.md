@@ -1,5 +1,7 @@
 # Wirescape Studio roadmap — Phase 7 UI pretest, Phase 8 native integration
 
+> **Superseded for next steps (2026-11-06).** The owner checked Phase 7 manually on the Pi. Integration with the native engine (old "Phase 8") is now planned in [kalharbi11/wirescape `docs/PLAN.md`](https://github.com/kalharbi11/wirescape/blob/main/docs/PLAN.md), Phases 1–5. This repo is imported there as `apps/studio/` (task P1A) and becomes read-only afterwards. Don't start new work here.
+
 Updated 2026-11-05. **Phase 7 is the standalone Raspberry Pi browser/UI validation phase in this repository. Phase 8 is native-engine integration in [kalharbi11/wirescape](https://github.com/kalharbi11/wirescape).** The former “Phase 7 = real engine” numbering is superseded.
 
 ## Current integration state
